@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../providers/auth_provider.dart';
-
 // ==========================================
 // ЗАГЛУШКИ ЭКРАНОВ
 // ==========================================
@@ -62,8 +60,8 @@ class NotificationsScreen extends StatelessWidget {
 // ==========================================
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  // Следим за состоянием авторизации
-  final isLoggedIn = ref.watch(isLoggedInProvider);
+  // ❌ ВРЕМЕННО УБРАЛИ: следим за состоянием авторизации
+  // final isLoggedIn = ref.watch(isLoggedInProvider);
 
   return GoRouter(
     initialLocation: '/dashboard',
@@ -95,20 +93,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const NotificationsScreen(),
       ),
     ],
-    redirect: (context, state) {
-      final isAuthRoute = state.matchedLocation == '/auth';
-
-      // Если не авторизован и не на экране логина → редирект на логин
-      if (!isLoggedIn && !isAuthRoute) {
-        return '/auth';
-      }
-
-      // Если авторизован и на экране логина → редирект на дашборд
-      if (isLoggedIn && isAuthRoute) {
-        return '/dashboard';
-      }
-
-      return null;
-    },
+    // ❌ ВРЕМЕННО ЗАКОММЕНТИРОВАНО для теста
+    // redirect: (context, state) {
+    //   final isAuthRoute = state.matchedLocation == '/auth';
+    //
+    //   if (!isLoggedIn && !isAuthRoute) {
+    //     return '/auth';
+    //   }
+    //
+    //   if (isLoggedIn && isAuthRoute) {
+    //     return '/dashboard';
+    //   }
+    //
+    //   return null;
+    // },
   );
 });
