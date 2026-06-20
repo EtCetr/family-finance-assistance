@@ -7,7 +7,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:workmanager/workmanager.dart';
-
+import 'core/backgrounds/background_sync.dart';
 import 'core/router/app_router.dart';
 // ============================================================
 // 1. WORKMANAGER (фоновая синхронизация БЕЗ уведомлений)
@@ -41,7 +41,6 @@ void backgroundSyncTask() {
   });
 }
 
-/// Настройка WorkManager
 /// Настройка WorkManager
 Future<void> configureWorkManager() async {
   await Workmanager().initialize(
@@ -105,6 +104,7 @@ Future<void> initializeNotifications() async {
 // ============================================================
 
 void main() async {
+  
   WidgetsFlutterBinding.ensureInitialized();
 
   // 1. Уведомления
@@ -116,8 +116,8 @@ void main() async {
     publishableKey: 'ВАШ-PUBLISHABLE-KEY',
   );
 
-  // 3. WorkManager для фоновой синхронизации
-  await configureWorkManager();
+  // 3. Фоновая синхронизация (WorkManager)
+  await configureBackgroundSync();
 
   // 4. TODO: Инициализация Drift
   // final database = AppDatabase();

@@ -14,12 +14,13 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.12.0 <4.0.0'
+  sdk: '>=3.12.0'
 
 dependencies:
   flutter:
     sdk: flutter
   workmanager: ^0.9.0+3
+  logger: ^2.0.0
 
   # State Management
   flutter_riverpod: ^3.3.2
@@ -44,7 +45,7 @@ dependencies:
   
   # Security & Encryption
   flutter_secure_storage: ^10.3.1
-  pointycastle: ^3.9.1
+  pointycastle: ^4.0.0
   
   # OCR (Скриншоты кэшбэка)
   google_mlkit_text_recognition: ^0.15.1
@@ -74,6 +75,24 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  # others
+  # _fe_analyzer_shared: ^104.0.0
+  # analyzer: ^14.0.0
+  # archive: ^4.0.9
+  # cli_util: ^0.5.1
+  # dart_style: ^3.1.9
+  # flutter_secure_storage_darwin: ^0.4.0
+  # freezed: ^4.0.0-dev.3
+  # matcher: ^0.12.20
+  # meta: ^1.18.3
+  # mockito: ^5.7.0
+  # package_config: ^3.0.0
+  # test: ^1.31.1
+  # test_api: ^0.7.12
+  # test_core: ^0.6.18
+  # vector_math: ^2.4.0
+  # xml: ^7.0.1
 
 
 
@@ -18557,3 +18576,372 @@ class TransactionsDaoManager {
   $$TransactionsTableTableManager get transactions =>
       $$TransactionsTableTableManager(_db.attachedDatabase, _db.transactions);
 }
+
+
+
+
+// 10. Файл sync_engine.dart
+
+
+
+import 'dart:convert';
+import 'package:drift/drift.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../database/database.dart';
+import '../database/transactions_dao.dart';
+import '../datasources/supabase_client.dart';
+import 'package:logger/logger.dart';
+
+final _logger = Logger(
+  printer: PrettyPrinter(
+    methodCount: 0,
+    errorMethodCount: 8,
+    lineLength: 120,
+    colors: true,
+    printEmojis: true,
+    dateTimeFormat: DateTimeFormat.onlyTimeAndSinceStart,
+  ),
+);
+
+/// Движок синхронизации: Drift <-> Supabase
+class SyncEngine {
+  final AppDatabase _localDb;
+  final TransactionsDao _transactionsDao;
+  final SupabaseClient _supabase;
+
+  SyncEngine({
+    required AppDatabase localDb,
+    required SupabaseClientService supabaseClient,
+  }) : _localDb = localDb,
+       _transactionsDao = TransactionsDao(localDb), // Создаем DAO явно
+       _supabase = supabaseClient.client;
+
+  /// Синхронизация всех pending-записей
+  Future<SyncResult> syncPendingData() async {
+    try {
+      _logger.i('[SyncEngine] Начинаю синхронизацию...');
+
+      final pendingTransactions = await _transactionsDao
+          .getPendingTransactions();
+
+      if (pendingTransactions.isEmpty) {
+        _logger.i('[SyncEngine] Нет pending-записей');
+        return SyncResult(success: true, syncedCount: 0, conflictCount: 0);
+      }
+
+      _logger.i(
+        '[SyncEngine] Найдено ${pendingTransactions.length} pending-записей',
+      );
+
+      int syncedCount = 0;
+      int conflictCount = 0;
+
+      final payload = pendingTransactions.map((t) {
+        return {
+          'id': t.id,
+          'account_id': t.accountId,
+          'bank_transaction_id': t.bankTransactionId,
+          'date': t.date.toIso8601String(),
+          'amount': t.amount,
+          'original_currency': t.originalCurrency,
+          'original_amount': t.originalAmount,
+          'type': t.type.name,
+          'is_refund': t.isRefund,
+          'bank_category': t.bankCategory,
+          'custom_category_id': t.customCategoryId,
+          'comment': t.comment,
+          'is_user_edited': t.isUserEdited,
+          'sync_status': 'pending',
+          'is_hidden_by_calendar': t.isHiddenByCalendar,
+          'hidden_until_date': t.hiddenUntilDate?.toIso8601String(),
+          'audit_status': t.auditStatus.name,
+          'is_archived_for_space': t.isArchivedForSpace,
+          'business_mirror': t.businessMirror,
+          'updated_at': DateTime.now().toIso8601String(),
+        };
+      }).toList();
+
+      try {
+        await _supabase
+            .from('transactions')
+            .upsert(payload, onConflict: 'bank_transaction_id');
+
+        _logger.i('[SyncEngine] UPSERT выполнен успешно');
+
+        final syncedIds = pendingTransactions.map((t) => t.id).toList();
+        await _transactionsDao.markAllAsSynced(syncedIds);
+
+        syncedCount = syncedIds.length;
+      } on PostgrestException catch (e) {
+        _logger.i('[SyncEngine] Ошибка UPSERT: ${e.message}');
+
+        if (e.code == '23505') {
+          _logger.i('[SyncEngine] Обнаружен конфликт уникальности');
+
+          for (final transaction in pendingTransactions) {
+            await _handleConflict(transaction, e);
+            conflictCount++;
+          }
+        } else {
+          rethrow;
+        }
+      }
+
+      _logger.i(
+        '[SyncEngine] Синхронизация завершена: '
+        '$syncedCount успешно, $conflictCount конфликтов',
+      );
+
+      return SyncResult(
+        success: true,
+        syncedCount: syncedCount,
+        conflictCount: conflictCount,
+      );
+    } catch (e, stackTrace) {
+      _logger.i('[SyncEngine] Критическая ошибка: $e');
+      _logger.i('[SyncEngine] Stack: $stackTrace');
+
+      return SyncResult(
+        success: false,
+        syncedCount: 0,
+        conflictCount: 0,
+        error: e.toString(),
+      );
+    }
+  }
+
+  /// Обработка конфликта синхронизации
+  Future<void> _handleConflict(
+    Transaction localTransaction,
+    PostgrestException exception,
+  ) async {
+    try {
+      final remoteData = await _supabase
+          .from('transactions')
+          .select()
+          .eq('bank_transaction_id', localTransaction.bankTransactionId!)
+          .single();
+
+      final conflict = SyncConflictsCompanion(
+        entityType: Value('transaction'),
+        entityId: Value(localTransaction.id),
+        localValue: Value(
+          jsonEncode({
+            'amount': localTransaction.amount,
+            'comment': localTransaction.comment,
+            'custom_category_id': localTransaction.customCategoryId,
+            'updated_at': DateTime.now().toIso8601String(),
+          }),
+        ),
+        remoteValue: Value(jsonEncode(remoteData)),
+        createdAt: Value(DateTime.now()),
+      );
+
+      await _localDb.into(_localDb.syncConflicts).insert(conflict);
+
+      _logger.i('[SyncEngine] Конфликт сохранён: ${localTransaction.id}');
+    } catch (e) {
+      _logger.i('[SyncEngine] Ошибка сохранения конфликта: $e');
+    }
+  }
+
+  /// Получить количество pending-записей
+  Future<int> getPendingCount() async {
+    return await _transactionsDao.countPending();
+  }
+
+  /// Принудительная синхронизация одной транзакции
+  Future<bool> syncSingleTransaction(String transactionId) async {
+    try {
+      final transaction = await (_localDb.select(
+        _localDb.transactions,
+      )..where((t) => t.id.equals(transactionId))).getSingleOrNull();
+
+      if (transaction == null) return false;
+
+      final payload = {
+        'id': transaction.id,
+        'account_id': transaction.accountId,
+        'bank_transaction_id': transaction.bankTransactionId,
+        'date': transaction.date.toIso8601String(),
+        'amount': transaction.amount,
+        'type': transaction.type.name,
+        'is_refund': transaction.isRefund,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+
+      await _supabase.from('transactions').upsert(payload);
+      await _transactionsDao.markAsSynced(transactionId);
+
+      return true;
+    } catch (e) {
+      _logger.i('[SyncEngine] Ошибка синхронизации транзакции: $e');
+      return false;
+    }
+  }
+}
+
+/// Результат операции синхронизации
+class SyncResult {
+  final bool success;
+  final int syncedCount;
+  final int conflictCount;
+  final String? error;
+
+  SyncResult({
+    required this.success,
+    required this.syncedCount,
+    required this.conflictCount,
+    this.error,
+  });
+
+  @override
+  String toString() {
+    if (success) {
+      return 'SyncResult: $syncedCount синхронизировано, '
+          '$conflictCount конфликтов';
+    } else {
+      return 'SyncResult: ошибка — $error';
+    }
+  }
+}
+
+
+
+// 11. Файл background_sync.dart
+
+
+
+import 'package:flutter/foundation.dart';
+import 'package:workmanager/workmanager.dart';
+import '../../data/database/database.dart';
+import '../../data/datasources/supabase_client.dart';
+import '../../data/repositories/sync_engine.dart';
+
+/// Фоновая задача синхронизации
+/// Запускается WorkManager каждые 15 минут
+@pragma('vm:entry-point')
+void backgroundSyncTask() {
+  Workmanager().executeTask((task, inputData) async {
+    try {
+      debugPrint('[BackgroundSync] Задача началась: ${DateTime.now()}');
+
+      // Инициализация внутри background isolate
+      final supabase = await SupabaseClientService.initialize(
+        url: 'https://dawspwixosrpefioihrf.supabase.co',
+        anonKey: 'sb_publishable_AlWLcTp8Cal0BryYDI6S9Q_UQPEO5yc',
+      );
+
+      final database = AppDatabase();
+      final syncEngine = SyncEngine(
+        localDb: database,
+        supabaseClient: supabase,
+      );
+
+      // Запуск синхронизации
+      final result = await syncEngine.syncPendingData();
+
+      debugPrint('[BackgroundSync] Результат: $result');
+
+      return Future.value(result.success);
+    } catch (e) {
+      debugPrint('[BackgroundSync] Ошибка: $e');
+      return Future.value(false);
+    }
+  });
+}
+
+/// Настройка WorkManager
+Future<void> configureBackgroundSync() async {
+  await Workmanager().initialize(
+    backgroundSyncTask,
+    // ✅ Убрали deprecated isInDebugMode
+  );
+
+  // Регистрация периодической задачи
+  await Workmanager().registerPeriodicTask(
+    'sync-pending-data',
+    'sync-pending-data',
+    // Минимальный интервал в Android — 15 минут
+    frequency: const Duration(minutes: 15),
+    // ✅ Убрали const перед Constraints
+    constraints: Constraints(
+      networkType: NetworkType.connected,
+      requiresBatteryNotLow: false,
+      requiresCharging: false,
+      requiresDeviceIdle: false,
+      requiresStorageNotLow: false,
+    ),
+    // Android-specific настройки
+    initialDelay: const Duration(minutes: 5),
+    backoffPolicy: BackoffPolicy.exponential,
+    backoffPolicyDelay: const Duration(minutes: 5),
+  );
+
+  debugPrint('[BackgroundSync] WorkManager настроен (интервал: 15 мин)');
+}
+
+/// Отключение фоновой синхронизации
+Future<void> cancelBackgroundSync() async {
+  await Workmanager().cancelByUniqueName('sync-pending-data');
+  debugPrint('[BackgroundSync] Фоновая синхронизация отключена');
+}
+
+
+
+// 12. Файл supabase_client.dart
+
+
+
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+/// Singleton клиент для работы с Supabase
+class SupabaseClientService {
+  static SupabaseClientService? _instance;
+  late final SupabaseClient _client;
+
+  SupabaseClientService._();
+
+  /// Инициализация клиента (вызывать из main.dart)
+  static Future<SupabaseClientService> initialize({
+    required String url,
+    required String anonKey,
+  }) async {
+    if (_instance != null) return _instance!;
+
+    await Supabase.initialize(url: url, publishableKey: anonKey);
+
+    _instance = SupabaseClientService._();
+    _instance!._client = Supabase.instance.client;
+
+    return _instance!;
+  }
+
+  /// Получить экземпляр клиента
+  SupabaseClient get client {
+    if (_instance == null) {
+      throw Exception('SupabaseClientService не инициализирован');
+    }
+    return _instance!._client;
+  }
+
+  /// Проверка подключения
+  Future<bool> isConnected() async {
+    try {
+      await _client.from('spaces').select().limit(1);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Получить текущего пользователя
+  User? get currentUser => _client.auth.currentUser;
+
+  /// Stream auth состояния
+  Stream<AuthState> get authStateChanges => _client.auth.onAuthStateChange;
+}
+
+
+
+// 13. 

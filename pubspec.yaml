@@ -4,12 +4,13 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.12.0 <4.0.0'
+  sdk: '>=3.12.0'
 
 dependencies:
   flutter:
     sdk: flutter
   workmanager: ^0.9.0+3
+  logger: ^2.0.0
 
   # State Management
   flutter_riverpod: ^3.3.2
@@ -34,7 +35,7 @@ dependencies:
   
   # Security & Encryption
   flutter_secure_storage: ^10.3.1
-  pointycastle: ^3.9.1
+  pointycastle: ^4.0.0
   
   # OCR (Скриншоты кэшбэка)
   google_mlkit_text_recognition: ^0.15.1
@@ -64,3 +65,21 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  # others
+  # _fe_analyzer_shared: ^104.0.0
+  # analyzer: ^14.0.0
+  # archive: ^4.0.9
+  # cli_util: ^0.5.1
+  # dart_style: ^3.1.9
+  # flutter_secure_storage_darwin: ^0.4.0
+  # freezed: ^4.0.0-dev.3
+  # matcher: ^0.12.20
+  # meta: ^1.18.3
+  # mockito: ^5.7.0
+  # package_config: ^3.0.0
+  # test: ^1.31.1
+  # test_api: ^0.7.12
+  # test_core: ^0.6.18
+  # vector_math: ^2.4.0
+  # xml: ^7.0.1
