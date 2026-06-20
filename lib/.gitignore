@@ -1,0 +1,33 @@
+# Dart/Flutter
+.dart_tool/
+.packages
+build/
+.pub/
+.pub-cache/
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets (НИКОГДА не коммить!)
+.env
+*.env
+lib/core/config/secrets.dart
+
+# Android
+android/.gradle/
+android/captures/
+android/gradlew
+android/gradlew.bat
+android/local.properties
+
+# iOS
+ios/Flutter/Flutter.framework/
+ios/Flutter/App.framework/
+ios/Pods/
+ios/.symlinks/

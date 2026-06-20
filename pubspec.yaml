@@ -1,0 +1,64 @@
+name: family_financial_assistant
+description: Мобильное приложение "Семейный Финансовый Ассистент" (Offline-First)
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.12.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  workmanager: ^0.9.0+3
+
+  # State Management
+  flutter_riverpod: ^3.3.2
+  riverpod_annotation: ^4.0.3       
+
+  # Database (Offline-First)
+  drift: ^2.34.0
+  drift_flutter: ^0.3.0  
+  sqlite3: ^3.3.3             
+  
+  # Backend & Sync
+  supabase_flutter: ^2.15.0
+  
+  # Фоновые задачи
+  flutter_background_service: ^5.1.0
+  flutter_background_service_android: ^6.3.1 
+  
+  # Routing
+  go_router: ^17.3.0                 
+  
+  # Security & Encryption
+  flutter_secure_storage: ^10.3.1
+  pointycastle: ^3.9.1
+  
+  # OCR (Скриншоты кэшбэка)
+  google_mlkit_text_recognition: ^0.15.1
+  
+  # Notifications
+  flutter_local_notifications: ^22.0.1
+  
+  # Export & Time
+  excel: ^4.0.6
+  timezone: ^0.11.0                  
+  
+  # Device Info
+  device_info_plus: ^13.1.0         
+  package_info_plus: ^10.1.0        
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0             
+  
+  # Code Generators
+  build_runner: ^2.15.0             
+  freezed: ^3.2.5                    
+  json_serializable: ^6.14.0         
+  drift_dev: ^2.34.0
+  riverpod_generator: ^4.0.4
+
+flutter:
+  uses-material-design: true
