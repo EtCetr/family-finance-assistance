@@ -28,8 +28,7 @@ dependencies:
   # Database (Offline-First)
   drift: ^2.34.0
   drift_flutter: ^0.3.0  
-  sqlite3: ^3.3.3
-  hooks: false             
+  sqlite3: ^3.3.3       
   
   # Backend & Sync
   supabase_flutter: ^2.15.0
