@@ -1,14 +1,15 @@
 // ============================================
 // PROJECT STATE - Семейный Финансовый Ассистент
 // ============================================
-// Последнее обновление: 21.06.2026 17:54
+// Последнее обновление: 22.06.2026 00:55
 // Статус: Активная разработка
 // 
 // РЕАЛИЗОВАННЫЕ РАЗДЕЛЫ ТЗ:
 // ✅ Раздел 3: Базовая структура БД (17 таблиц)
-// ✅ Раздел 4: Таблица транзакций и кастомных вкладок
+// ⚠️ Раздел 4: Таблица транзакций и кастомных вкладок (таблицы созданы, логика авто-зеркалирования не реализована)
 // ✅ Раздел 5: Алгоритмы расчётов (SQL-запросы)
-// ✅ Раздел 14.1: Экран "Лог операций" (UI)
+// ⚠️ Раздел 6: Модуль умного кэшбэка (UI и сервисы готовы, WorkManager и сохранение в БД не реализованы)
+// ✅ Раздел 14.1: Экран "Лог операций" (UI готов, подключение к БД не реализовано)
 // 
 // ТЕКУЩИЙ ЭТАП:
 // 🔄 Подключение UI к Riverpod-провайдерам
@@ -39,7 +40,9 @@ family_finance_app/
 │   │   │   ├── transactions_dao.dart  # DAO для транзакций
 │   │   │   ├── transactions_dao.g.dart
 │   │   │   ├── analytics_dao.dart     # 🆕 DAO для аналитики
-│   │   │   └── analytics_dao.g.dart   # 🆕 Generated
+│   │   │   ├── analytics_dao.g.dart   # 🆕 Generated
+│   │   │   ├── cashback_dao.dart      # 🆕 DAO для кэшбэка
+│   │   │   └── cashback_dao.g.dart    # 🆕 Generated
 │   │   ├── models/                    # DTO модели
 │   │   └── repositories/
 │   │       ├── sync_engine.dart       # Синхронизация Drift<->Supabase
@@ -60,7 +63,17 @@ family_finance_app/
 │   │   │       └── widgets/
 │   │   │           ├── transaction_card.dart      # 🆕 Карточка
 │   │   │           └── transaction_actions_sheet.dart # 🆕 Long-press меню
-│   │   ├── cashback/                  # (будущий кэшбэк)
+│   │   ├── cashback/                  # 🆕 Модуль кэшбэка
+│   │   │   ├── presentation/
+│   │   │   │   ├── screens/
+│   │   │   │   │   ├── cashback_screen.dart       # 🆕 Главный экран
+│   │   │   │   │   └── cashback_validation_screen.dart # 🆕 Экран валидации OCR
+│   │   │   │   └── widgets/
+│   │   │   │       ├── cashback_card_switcher.dart # 🆕 Свитч карт
+│   │   │   │       └── cashback_progress_bar.dart  # 🆕 Прогресс-бар
+│   │   │   └── services/
+│   │   │       ├── cashback_reminder_scheduler.dart # 🆕 Планировщик напоминаний
+│   │   │       └── ocr_service.dart               # 🆕 OCR-сервис
 │   │   ├── custom_dashboards/         # (будущие кастомные вкладки)
 │   │   ├── settings/                  # (будущие настройки)
 │   │   └── notifications/             # (будущие уведомления)
@@ -78,7 +91,7 @@ family_finance_app/
 // 3. ФАЙЛ: pubspec.yaml
 // ============================================
 
-name: family_financial_assistant
+name: family_financial_app
 description: Мобильное приложение "Семейный Финансовый Ассистент" (Offline-First)
 publish_to: 'none'
 version: 1.0.0+1
@@ -324,7 +337,8 @@ class FamilyFinanceApp extends ConsumerWidget {
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:family_financial_assistant/features/transactions/presentation/screens/transactions_screen.dart';
+import '../../features/transactions/presentation/screens/transactions_screen.dart';
+import '../../features/cashback/presentation/screens/cashback_screen.dart';
 
 // ==========================================
 // ЗАГЛУШКИ ЭКРАНОВ
@@ -342,13 +356,6 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       const Scaffold(body: Center(child: Text('Главная / Дашборд')));
-}
-
-class CashbackScreen extends StatelessWidget {
-  const CashbackScreen({super.key});
-  @override
-  Widget build(BuildContext context) =>
-      const Scaffold(body: Center(child: Text('Умный Кэшбэк')));
 }
 
 class CustomDashboardsScreen extends StatelessWidget {
@@ -378,7 +385,7 @@ class NotificationsScreen extends StatelessWidget {
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
-    initialLocation: '/transactions', // 👈 Изменил на /transactions для теста
+    initialLocation: '/cashback', // !!!МЕНЯТЬ ЭКРАН ДЛЯ ТЕСТА ЗДЕСЬ!!! В оригинале должно стоять /dashboard
     debugLogDiagnostics: true,
     routes: [
       GoRoute(path: '/auth', builder: (context, state) => const AuthScreen()),
@@ -422,6 +429,7 @@ import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:path_provider/path_provider.dart';
+
 
 part 'database.g.dart';
 
@@ -18283,13 +18291,9 @@ import 'database.dart';
 part 'analytics_dao.g.dart';
 
 /// DAO для аналитических SQL-запросов (Раздел 5 ТЗ)
-@DriftAccessor(tables: [
-  Transactions,
-  Accounts,
-  Categories,
-  AppSettings,
-  BudgetLimits,
-])
+@DriftAccessor(
+  tables: [Transactions, Accounts, Categories, AppSettings, BudgetLimits],
+)
 class AnalyticsDao extends DatabaseAccessor<AppDatabase>
     with _$AnalyticsDaoMixin {
   AnalyticsDao(super.db);
@@ -18347,20 +18351,19 @@ class AnalyticsDao extends DatabaseAccessor<AppDatabase>
       GROUP BY t.custom_category_id, c.name
       ORDER BY total DESC
       ''',
-      variables: [
-        Variable<int>(year),
-        Variable<int>(month),
-      ],
+      variables: [Variable<int>(year), Variable<int>(month)],
       readsFrom: {transactions, categories},
     );
 
     final rows = await query.get();
     return rows
-        .map((row) => CategoryExpense(
-              categoryId: row.read<String>('custom_category_id'),
-              categoryName: row.read<String>('category_name'),
-              total: row.read<double>('total'),
-            ))
+        .map(
+          (row) => CategoryExpense(
+            categoryId: row.read<String>('custom_category_id'),
+            categoryName: row.read<String>('category_name'),
+            total: row.read<double>('total'),
+          ),
+        )
         .toList();
   }
 
@@ -18413,10 +18416,7 @@ class AnalyticsDao extends DatabaseAccessor<AppDatabase>
         AND audit_status != 'ignored'
         AND CAST(strftime('%Y', date) AS INTEGER) = ?
       ''',
-      variables: [
-        Variable<String>(categoryId),
-        Variable<int>(year),
-      ],
+      variables: [Variable<String>(categoryId), Variable<int>(year)],
       readsFrom: {transactions},
     );
 
@@ -18438,9 +18438,7 @@ class AnalyticsDao extends DatabaseAccessor<AppDatabase>
   // ============================================================
 
   /// Рассчитать подушку безопасности (в месяцах)
-  Future<double> getSafetyCushion({
-    required String userId,
-  }) async {
+  Future<double> getSafetyCushion({required String userId}) async {
     // 1. Получить общий баланс (сумма всех счетов с include_in_personal_balance = TRUE)
     final balanceQuery = customSelect(
       '''
@@ -18504,7 +18502,9 @@ class AnalyticsDao extends DatabaseAccessor<AppDatabase>
       return await _getBaseLimit(categoryId, year, month);
     }
 
-    final inheritLimit = settingsRow.read<bool>('inherit_limit_from_previous_month');
+    final inheritLimit = settingsRow.read<bool>(
+      'inherit_limit_from_previous_month',
+    );
     final carryOver = settingsRow.read<bool>('carry_over_unused_limit');
 
     // 2. Получить базовый лимит на текущий месяц
@@ -18553,11 +18553,7 @@ class AnalyticsDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Получить базовый лимит из таблицы budget_limits
-  Future<double> _getBaseLimit(
-    String categoryId,
-    int year,
-    int month,
-  ) async {
+  Future<double> _getBaseLimit(String categoryId, int year, int month) async {
     final query = customSelect(
       '''
       SELECT COALESCE(limit_amount, 0.0) as limit_amount
@@ -18645,23 +18641,22 @@ class AnalyticsDao extends DatabaseAccessor<AppDatabase>
 
     final rows = await query.get();
     return rows
-        .map((row) => AccountBalance(
-              accountId: row.read<String>('id'),
-              bankName: row.read<String>('bank_name'),
-              customName: row.read<String>('custom_name'),
-              cardMask: row.read<String>('card_number_mask'),
-              balance: row.read<double>('current_balance'),
-              currency: row.read<String>('currency'),
-            ))
+        .map(
+          (row) => AccountBalance(
+            accountId: row.read<String>('id'),
+            bankName: row.read<String>('bank_name'),
+            customName: row.read<String>('custom_name'),
+            cardMask: row.read<String>('card_number_mask'),
+            balance: row.read<double>('current_balance'),
+            currency: row.read<String>('currency'),
+          ),
+        )
         .toList();
   }
 
   /// Получить Savings Rate (ТЗ п.5.2)
   /// (Доходы - Расходы) / Доходы * 100%
-  Future<double> getSavingsRate({
-    required int year,
-    required int month,
-  }) async {
+  Future<double> getSavingsRate({required int year, required int month}) async {
     final query = customSelect(
       '''
       SELECT 
@@ -18672,10 +18667,7 @@ class AnalyticsDao extends DatabaseAccessor<AppDatabase>
         AND CAST(strftime('%Y', date) AS INTEGER) = ?
         AND CAST(strftime('%m', date) AS INTEGER) = ?
       ''',
-      variables: [
-        Variable<int>(year),
-        Variable<int>(month),
-      ],
+      variables: [Variable<int>(year), Variable<int>(month)],
       readsFrom: {transactions},
     );
 
@@ -18725,7 +18717,348 @@ class AccountBalance {
 
 
 // ============================================
-// 11. ФАЙЛ: lib/data/repositories/sync_engine.dart
+// 11. ФАЙЛ: lib/data/database/analytics_dao.g.dart
+// ============================================
+
+// GENERATED CODE - DO NOT MODIFY BY HAND
+
+part of 'analytics_dao.dart';
+
+// ignore_for_file: type=lint
+mixin _$AnalyticsDaoMixin on DatabaseAccessor<AppDatabase> {
+  $SpacesTable get spaces => attachedDatabase.spaces;
+  $UsersTable get users => attachedDatabase.users;
+  $AccountsTable get accounts => attachedDatabase.accounts;
+  $CategoriesTable get categories => attachedDatabase.categories;
+  $TransactionsTable get transactions => attachedDatabase.transactions;
+  $AppSettingsTable get appSettings => attachedDatabase.appSettings;
+  $BudgetLimitsTable get budgetLimits => attachedDatabase.budgetLimits;
+  AnalyticsDaoManager get managers => AnalyticsDaoManager(this);
+}
+
+class AnalyticsDaoManager {
+  final _$AnalyticsDaoMixin _db;
+  AnalyticsDaoManager(this._db);
+  $$SpacesTableTableManager get spaces =>
+      $$SpacesTableTableManager(_db.attachedDatabase, _db.spaces);
+  $$UsersTableTableManager get users =>
+      $$UsersTableTableManager(_db.attachedDatabase, _db.users);
+  $$AccountsTableTableManager get accounts =>
+      $$AccountsTableTableManager(_db.attachedDatabase, _db.accounts);
+  $$CategoriesTableTableManager get categories =>
+      $$CategoriesTableTableManager(_db.attachedDatabase, _db.categories);
+  $$TransactionsTableTableManager get transactions =>
+      $$TransactionsTableTableManager(_db.attachedDatabase, _db.transactions);
+  $$AppSettingsTableTableManager get appSettings =>
+      $$AppSettingsTableTableManager(_db.attachedDatabase, _db.appSettings);
+  $$BudgetLimitsTableTableManager get budgetLimits =>
+      $$BudgetLimitsTableTableManager(_db.attachedDatabase, _db.budgetLimits);
+}
+
+
+
+
+// ============================================
+// 12. ФАЙЛ: lib/data/database/cashback_dao.dart
+// ============================================
+
+import 'package:drift/drift.dart';
+import 'database.dart';
+
+part 'cashback_dao.g.dart';
+
+/// DAO для работы с кэшбэком (Раздел 6 ТЗ)
+@DriftAccessor(tables: [
+  CashbackMatrix, 
+  CashbackReminders,
+  Categories,
+  Transactions,
+  ])
+class CashbackDao extends DatabaseAccessor<AppDatabase>
+    with _$CashbackDaoMixin {
+  CashbackDao(super.db);
+
+  // ============================================================
+  // 1. ОЧИСТКА ПО ТАЙМЕРУ (ТЗ п.6.1)
+  // ============================================================
+
+  /// Очистить monthly-кэшбэки (1-е число каждого месяца)
+  Future<int> clearMonthlyCashback() async {
+    return (delete(
+      cashbackMatrix,
+    )..where((t) => t.lifetimeType.equals('monthly'))).go();
+  }
+
+  /// Очистить weekly-кэшбэки (воскресенье 23:59:59)
+  Future<int> clearWeeklyCashback() async {
+    return (delete(
+      cashbackMatrix,
+    )..where((t) => t.lifetimeType.equals('weekly'))).go();
+  }
+
+  /// Очистить просроченные кэшбэки (expires_at < now)
+  Future<int> clearExpiredCashback() async {
+    final now = DateTime.now();
+    return (delete(
+      cashbackMatrix,
+    )..where((t) => t.expiresAt.isSmallerThanValue(now))).go();
+  }
+
+  // ============================================================
+  // 2. ПОЛУЧЕНИЕ КЭШБЭКОВ (ТЗ п.6.3)
+  // ============================================================
+
+  /// Получить все активные кэшбэки для аккаунта
+  Future<List<CashbackMatrixData>> getActiveCashbacks({
+    required String accountId,
+  }) async {
+    final now = DateTime.now();
+    return (select(cashbackMatrix)..where(
+          (t) =>
+              t.accountId.equals(accountId) &
+              (t.expiresAt.isNull() | t.expiresAt.isBiggerThanValue(now)),
+        ))
+        .get();
+  }
+
+  /// Получить кэшбэки с сортировкой по убыванию процента
+  Future<List<CashbackMatrixData>> getCashbacksSortedByPercent({
+    required String accountId,
+  }) async {
+    final now = DateTime.now();
+    return (select(cashbackMatrix)
+          ..where(
+            (t) =>
+                t.accountId.equals(accountId) &
+                (t.expiresAt.isNull() | t.expiresAt.isBiggerThanValue(now)),
+          )
+          ..orderBy([(t) => OrderingTerm.desc(t.percent)]))
+        .get();
+  }
+
+  /// Получить только "закреплённые" категории (is_pinned_for_cashback = TRUE)
+  Future<List<CashbackMatrixData>> getPinnedCashbacks({
+    required String accountId,
+  }) async {
+    final query = customSelect(
+      '''
+      SELECT cm.*
+      FROM cashback_matrix cm
+      INNER JOIN categories c ON cm.category_name = c.name
+      WHERE cm.account_id = ?
+        AND c.is_pinned_for_cashback = TRUE
+        AND (cm.expires_at IS NULL OR cm.expires_at > ?)
+      ORDER BY cm.percent DESC
+      ''',
+      variables: [
+        Variable<String>(accountId),
+        Variable<DateTime>(DateTime.now()),
+      ],
+      readsFrom: {cashbackMatrix, categories},
+    );
+
+    final rows = await query.get();
+    return rows
+        .map(
+          (row) => CashbackMatrixData(
+            id: row.read<String>('id'),
+            accountId: row.read<String>('account_id'),
+            categoryName: row.read<String>('category_name'),
+            percent: row.read<double>('percent'),
+            status: CashbackStatus.values.firstWhere(
+              (e) => e.name == row.read<String>('status'),
+            ),
+            lifetimeType: CashbackLifetimeType.values.firstWhere(
+              (e) => e.name == row.read<String>('lifetime_type'),
+            ),
+            expiresAt: row.read<DateTime?>('expires_at'),
+          ),
+        )
+        .toList();
+  }
+
+  // ============================================================
+  // 3. ПРОГРЕСС-БАР ЛИМИТОВ (ТЗ п.6.3)
+  // ============================================================
+
+  /// Рассчитать прогресс лимита выплат для категории
+  Future<CashbackProgress> getCashbackProgress({
+    required String accountId,
+    required String categoryName,
+    required int year,
+    required int month,
+  }) async {
+    // 1. Получить процент кэшбэка
+    final cashbackQuery = customSelect(
+      '''
+      SELECT percent, status
+      FROM cashback_matrix
+      WHERE account_id = ?
+        AND category_name = ?
+        AND (expires_at IS NULL OR expires_at > ?)
+      LIMIT 1
+      ''',
+      variables: [
+        Variable<String>(accountId),
+        Variable<String>(categoryName),
+        Variable<DateTime>(DateTime.now()),
+      ],
+      readsFrom: {cashbackMatrix},
+    );
+
+    final cashbackRow = await cashbackQuery.getSingleOrNull();
+    if (cashbackRow == null) {
+      return CashbackProgress(
+        categoryName: categoryName,
+        percent: 0.0,
+        earned: 0.0,
+        limit: 0.0,
+        progress: 0.0,
+      );
+    }
+
+    final percent = cashbackRow.read<double>('percent');
+
+    // 2. Рассчитать заработанный кэшбэк за месяц
+    final earnedQuery = customSelect(
+      '''
+      SELECT COALESCE(SUM(amount * ? / 100.0), 0.0) as earned
+      FROM transactions
+      WHERE account_id = ?
+        AND custom_category_id IN (
+          SELECT id FROM categories WHERE name = ?
+        )
+        AND type = 'expense'
+        AND audit_status != 'ignored'
+        AND CAST(strftime('%Y', date) AS INTEGER) = ?
+        AND CAST(strftime('%m', date) AS INTEGER) = ?
+      ''',
+      variables: [
+        Variable<double>(percent),
+        Variable<String>(accountId),
+        Variable<String>(categoryName),
+        Variable<int>(year),
+        Variable<int>(month),
+      ],
+      readsFrom: {transactions, categories},
+    );
+
+    final earnedRow = await earnedQuery.getSingle();
+    final earned = earnedRow.read<double>('earned');
+
+    // 3. Лимит (пока хардкод, потом из БД)
+    const limit = 3000.0; // Максимум выплат по категории в месяц
+
+    return CashbackProgress(
+      categoryName: categoryName,
+      percent: percent,
+      earned: earned,
+      limit: limit,
+      progress: earned / limit,
+    );
+  }
+
+  // ============================================================
+  // 4. НАПОМИНАНИЯ О КЭШБЭКЕ (ТЗ п.6.1)
+  // ============================================================
+
+  /// Получить все активные напоминания
+  Future<List<CashbackReminder>> getActiveReminders({required String userId}) {
+    return (select(
+      cashbackReminders,
+    )..where((t) => t.userId.equals(userId) & t.isEnabled.equals(true))).get();
+  }
+
+  /// Создать напоминание
+  Future<int> createReminder(CashbackRemindersCompanion reminder) {
+    return into(cashbackReminders).insert(reminder);
+  }
+
+  /// Обновить напоминание
+  Future<bool> updateReminder(CashbackReminder reminder) {
+    return update(cashbackReminders).replace(reminder);
+  }
+
+  /// Удалить напоминание
+  Future<int> deleteReminder(String reminderId) {
+    return (delete(
+      cashbackReminders,
+    )..where((t) => t.id.equals(reminderId))).go();
+  }
+}
+
+/// DTO для прогресса кэшбэка
+class CashbackProgress {
+  final String categoryName;
+  final double percent;
+  final double earned;
+  final double limit;
+  final double progress; // 0.0 - 1.0
+
+  CashbackProgress({
+    required this.categoryName,
+    required this.percent,
+    required this.earned,
+    required this.limit,
+    required this.progress,
+  });
+
+  bool get isLimitReached => earned >= limit;
+}
+
+
+
+// ============================================
+// 13. ФАЙЛ: lib/data/database/cashback_dao.g.dart
+// ============================================
+
+// GENERATED CODE - DO NOT MODIFY BY HAND
+
+part of 'cashback_dao.dart';
+
+// ignore_for_file: type=lint
+mixin _$CashbackDaoMixin on DatabaseAccessor<AppDatabase> {
+  $SpacesTable get spaces => attachedDatabase.spaces;
+  $UsersTable get users => attachedDatabase.users;
+  $AccountsTable get accounts => attachedDatabase.accounts;
+  $CashbackMatrixTable get cashbackMatrix => attachedDatabase.cashbackMatrix;
+  $CashbackRemindersTable get cashbackReminders =>
+      attachedDatabase.cashbackReminders;
+  $CategoriesTable get categories => attachedDatabase.categories;
+  $TransactionsTable get transactions => attachedDatabase.transactions;
+  CashbackDaoManager get managers => CashbackDaoManager(this);
+}
+
+class CashbackDaoManager {
+  final _$CashbackDaoMixin _db;
+  CashbackDaoManager(this._db);
+  $$SpacesTableTableManager get spaces =>
+      $$SpacesTableTableManager(_db.attachedDatabase, _db.spaces);
+  $$UsersTableTableManager get users =>
+      $$UsersTableTableManager(_db.attachedDatabase, _db.users);
+  $$AccountsTableTableManager get accounts =>
+      $$AccountsTableTableManager(_db.attachedDatabase, _db.accounts);
+  $$CashbackMatrixTableTableManager get cashbackMatrix =>
+      $$CashbackMatrixTableTableManager(
+        _db.attachedDatabase,
+        _db.cashbackMatrix,
+      );
+  $$CashbackRemindersTableTableManager get cashbackReminders =>
+      $$CashbackRemindersTableTableManager(
+        _db.attachedDatabase,
+        _db.cashbackReminders,
+      );
+  $$CategoriesTableTableManager get categories =>
+      $$CategoriesTableTableManager(_db.attachedDatabase, _db.categories);
+  $$TransactionsTableTableManager get transactions =>
+      $$TransactionsTableTableManager(_db.attachedDatabase, _db.transactions);
+}
+
+
+
+
+// ============================================
+// 14. ФАЙЛ: lib/data/repositories/sync_engine.dart
 // ============================================
 
 import 'dart:convert';
@@ -18953,7 +19286,7 @@ class SyncResult {
 
 
 // ============================================
-// 12. ФАЙЛ: lib/core/backgrounds/background_sync.dart
+// 15. ФАЙЛ: lib/core/backgrounds/background_sync.dart
 // ============================================
 
 import 'package:flutter/foundation.dart';
@@ -19034,7 +19367,7 @@ Future<void> cancelBackgroundSync() async {
 
 
 // ============================================
-// 13. ФАЙЛ: lib/data/datasources/supabase_client.dart
+// 16. ФАЙЛ: lib/data/datasources/supabase_client.dart
 // ============================================
 
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -19089,7 +19422,7 @@ class SupabaseClientService {
 
 
 // ============================================
-// 14. ФАЙЛ: lib/data/repositories/analytics_repository.dart
+// 17. ФАЙЛ: lib/data/repositories/analytics_repository.dart
 // ============================================
 
 import '../database/database.dart';
@@ -19150,7 +19483,7 @@ class AnalyticsRepository {
 
 
 // ============================================
-// 15. ФАЙЛ: lib/core/providers/analytics_providers.dart
+// 18. ФАЙЛ: lib/core/providers/analytics_providers.dart
 // ============================================
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19304,7 +19637,7 @@ final savingsRateProvider = FutureProvider.family<double, SavingsRateParams>((
 
 
 // ============================================
-// 16. ФАЙЛ: lib/features/transactions/presentation/models/transaction_ui_model.dart
+// 19. ФАЙЛ: lib/features/transactions/presentation/models/transaction_ui_model.dart
 // ============================================
 
 import 'package:flutter/material.dart';
@@ -19356,7 +19689,7 @@ class TransactionUiModel {
 
 
 // ============================================
-// 17. ФАЙЛ: lib/features/transactions/presentation/screens/transactions_screen.dart
+// 20. ФАЙЛ: lib/features/transactions/presentation/screens/transactions_screen.dart
 // ============================================
 
 import 'package:flutter/material.dart';
@@ -19488,7 +19821,7 @@ class MockData {
 
 
 // ============================================
-// 18. ФАЙЛ: lib/features/transactions/presentation/widgets/transaction_card.dart
+// 21. ФАЙЛ: lib/features/transactions/presentation/widgets/transaction_card.dart
 // ============================================
 
 import 'package:flutter/material.dart';
@@ -19636,7 +19969,7 @@ class TransactionCard extends StatelessWidget {
 
 
 // ============================================
-// 19. ФАЙЛ: lib/features/transactions/presentation/widgets/transaction_actions_sheet.dart
+// 22. ФАЙЛ: lib/features/transactions/presentation/widgets/transaction_actions_sheet.dart
 // ============================================
 
 import 'package:flutter/material.dart';
@@ -19736,6 +20069,745 @@ class TransactionActionsSheet extends StatelessWidget {
   }
 }
 
+
+
+// ============================================
+// 23. ФАЙЛ: lib/features/cashback/presentation/screens/cashback_screen.dart
+// ============================================
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../services/ocr_service.dart';
+import '../widgets/cashback_progress_bar.dart';
+import '../widgets/cashback_card_switcher.dart';
+import 'cashback_validation_screen.dart';
+
+/// Главный экран кэшбэка (ТЗ Раздел 6)
+class CashbackScreen extends ConsumerStatefulWidget {
+  const CashbackScreen({super.key});
+
+  @override
+  ConsumerState<CashbackScreen> createState() => _CashbackScreenState();
+}
+
+class _CashbackScreenState extends ConsumerState<CashbackScreen> {
+  bool _isFamilyMode = false;
+  final OcrService _ocrService = OcrService();
+
+  @override
+  void dispose() {
+    _ocrService.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Умный Кэшбэк'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.camera_alt),
+            onPressed: _onScanScreenshot,
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // Свитч "Свои/Семейные карты"
+          CashbackCardSwitcher(
+            isFamilyMode: _isFamilyMode,
+            onChanged: (value) {
+              setState(() {
+                _isFamilyMode = value;
+              });
+            },
+          ),
+
+          // Прогресс-бары лимитов
+          Expanded(
+            child: ListView(
+              children: [
+                CashbackProgressBar(
+                  categoryName: 'Супермаркеты',
+                  earned: 1250.50,
+                  limit: 3000.0,
+                  percent: 5,
+                ),
+                CashbackProgressBar(
+                  categoryName: 'Рестораны',
+                  earned: 2800.00,
+                  limit: 3000.0,
+                  percent: 10,
+                ),
+                CashbackProgressBar(
+                  categoryName: 'Такси',
+                  earned: 3000.00,
+                  limit: 3000.0,
+                  percent: 7,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _onScanScreenshot,
+        child: const Icon(Icons.camera_alt),
+      ),
+    );
+  }
+
+  Future<void> _onScanScreenshot() async {
+    // TODO: Выбрать изображение из галереи
+    // Пока используем тестовый путь
+    const testImagePath = '/path/to/screenshot.png';
+
+    final result = await _ocrService.recognizeText(testImagePath);
+
+    if (result.status == OcrStatus.error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка распознавания: ${result.error}')),
+        );
+      }
+      return;
+    }
+
+    if (mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CashbackValidationScreen(ocrResult: result),
+        ),
+      );
+    }
+  }
+}
+
+
+
+// ============================================
+// 24. ФАЙЛ: lib/features/cashback/presentation/screens/cashback_validation_screen.dart
+// ============================================
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../services/ocr_service.dart';
+
+/// Экран пред-валидации OCR (ТЗ п.6.2)
+class CashbackValidationScreen extends ConsumerStatefulWidget {
+  final OcrResult ocrResult;
+
+  const CashbackValidationScreen({super.key, required this.ocrResult});
+
+  @override
+  ConsumerState<CashbackValidationScreen> createState() =>
+      _CashbackValidationScreenState();
+}
+
+class _CashbackValidationScreenState
+    extends ConsumerState<CashbackValidationScreen> {
+  late List<CashbackItem> _items;
+
+  @override
+  void initState() {
+    super.initState();
+    _items = List.from(widget.ocrResult.items);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Проверьте распознавание'),
+        actions: [
+          IconButton(icon: const Icon(Icons.check), onPressed: _onApprove),
+        ],
+      ),
+      body: Column(
+        children: [
+          // Информация о статусе
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            color: theme.colorScheme.primaryContainer,
+            child: Row(
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  color: theme.colorScheme.onPrimaryContainer,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Проверьте распознанные данные. Вы можете отредактировать поля перед сохранением.',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Список элементов
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _items.length,
+              itemBuilder: (context, index) {
+                final item = _items[index];
+                return _CashbackItemCard(
+                  item: item,
+                  onChanged: (updatedItem) {
+                    setState(() {
+                      _items[index] = updatedItem;
+                    });
+                  },
+                );
+              },
+            ),
+          ),
+
+          // Кнопки действий
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Отмена'),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _onApprove,
+                    child: const Text('Сохранить'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _onApprove() {
+    // TODO: Сохранить в БД со статусом approved
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Кэшбэк сохранён')));
+    Navigator.pop(context, _items.where((item) => item.isSelected).toList());
+  }
+}
+
+/// Карточка элемента кэшбэка с редактируемыми полями
+class _CashbackItemCard extends StatefulWidget {
+  final CashbackItem item;
+  final ValueChanged<CashbackItem> onChanged;
+
+  const _CashbackItemCard({required this.item, required this.onChanged});
+
+  @override
+  State<_CashbackItemCard> createState() => _CashbackItemCardState();
+}
+
+class _CashbackItemCardState extends State<_CashbackItemCard> {
+  late TextEditingController _merchantController;
+  late TextEditingController _amountController;
+  late TextEditingController _percentController;
+
+  @override
+  void initState() {
+    super.initState();
+    _merchantController = TextEditingController(text: widget.item.merchantName);
+    _amountController = TextEditingController(
+      text: widget.item.amount.toString(),
+    );
+    _percentController = TextEditingController(
+      text: widget.item.percent.toString(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _merchantController.dispose();
+    _amountController.dispose();
+    _percentController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            // Чекбокс выбора
+            Row(
+              children: [
+                Checkbox(
+                  value: widget.item.isSelected,
+                  onChanged: (value) {
+                    widget.item.isSelected = value ?? true;
+                    widget.onChanged(widget.item);
+                  },
+                ),
+                const Expanded(
+                  child: Text(
+                    'Включить в кэшбэк',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+
+            // Поле магазина
+            TextField(
+              controller: _merchantController,
+              decoration: const InputDecoration(
+                labelText: 'Магазин',
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (value) {
+                widget.item.merchantName = value;
+                widget.onChanged(widget.item);
+              },
+            ),
+            const SizedBox(height: 8),
+
+            // Сумма и процент
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _amountController,
+                    decoration: const InputDecoration(
+                      labelText: 'Сумма (₽)',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
+                    onChanged: (value) {
+                      widget.item.amount = double.tryParse(value) ?? 0.0;
+                      widget.onChanged(widget.item);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: _percentController,
+                    decoration: const InputDecoration(
+                      labelText: 'Процент (%)',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
+                    onChanged: (value) {
+                      widget.item.percent = int.tryParse(value) ?? 0;
+                      widget.onChanged(widget.item);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+
+// ============================================
+// 25. ФАЙЛ: lib/features/cashback/presentation/widgets/cashback_card_switcher.dart
+// ============================================
+
+import 'package:flutter/material.dart';
+
+/// Свитч "Свои/Семейные карты" (ТЗ п.6.3)
+class CashbackCardSwitcher extends StatelessWidget {
+  final bool isFamilyMode;
+  final ValueChanged<bool> onChanged;
+
+  const CashbackCardSwitcher({
+    super.key,
+    required this.isFamilyMode,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      margin: const EdgeInsets.all(16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Icon(
+              isFamilyMode ? Icons.family_restroom : Icons.person,
+              color: theme.colorScheme.primary,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isFamilyMode ? 'Семейные карты' : 'Мои карты',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    isFamilyMode
+                        ? 'Показаны карты всех членов семьи'
+                        : 'Показаны только ваши карты',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Switch(value: isFamilyMode, onChanged: onChanged),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+
+// ============================================
+// 26. ФАЙЛ: lib/features/cashback/presentation/widgets/cashback_progress_bar.dart
+// ============================================
+
+import 'package:flutter/material.dart';
+
+/// Прогресс-бар лимита выплат (ТЗ п.6.3)
+class CashbackProgressBar extends StatelessWidget {
+  final String categoryName;
+  final double earned;
+  final double limit;
+  final double percent;
+
+  const CashbackProgressBar({
+    super.key,
+    required this.categoryName,
+    required this.earned,
+    required this.limit,
+    required this.percent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final progress = earned / limit;
+    final isLimitReached = earned >= limit;
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Заголовок
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  categoryName,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  '$percent%',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Прогресс-бар
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 12,
+                backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  isLimitReached
+                      ? theme.colorScheme.error
+                      : theme.colorScheme.primary,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // Текст под прогресс-баром
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Заработано: ${earned.toStringAsFixed(2)} ₽',
+                  style: theme.textTheme.bodySmall,
+                ),
+                Text(
+                  isLimitReached
+                      ? 'Лимит достигнут!'
+                      : 'Лимит: ${limit.toStringAsFixed(0)} ₽',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: isLimitReached
+                        ? theme.colorScheme.error
+                        : theme.colorScheme.onSurfaceVariant,
+                    fontWeight: isLimitReached
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+
+// ============================================
+// 27. ФАЙЛ: lib/features/cashback/services/cashback_reminder_scheduler.dart
+// ============================================
+
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:logger/logger.dart';
+import 'package:timezone/timezone.dart' as tz;
+import '../../../data/database/database.dart';
+
+final _logger = Logger();
+
+class CashbackReminderScheduler {
+  final FlutterLocalNotificationsPlugin _notificationsPlugin =
+      FlutterLocalNotificationsPlugin();
+
+  Future<void> initialize() async {
+    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const iosSettings = DarwinInitializationSettings();
+    
+    await _notificationsPlugin.initialize(
+      settings: InitializationSettings(
+        android: androidSettings,
+        iOS: iosSettings,
+      ),
+    );
+
+
+    _logger.i('[CashbackScheduler] Инициализирован');
+  }
+
+  Future<void> scheduleReminder(CashbackReminder reminder) async {
+    try {
+      final scheduledDate = reminder.scheduledAt;
+
+      if (scheduledDate.isBefore(DateTime.now())) {
+        _logger.w('[CashbackScheduler] Дата в прошлом: $scheduledDate');
+        return;
+      }
+
+      await _notificationsPlugin.zonedSchedule(
+        id: reminder.id.hashCode, // Добавлено id:
+        title: '💰 Не забудьте выбрать кэшбэк!', // Добавлено title:
+        body:
+            'Сегодня можно активировать выгодные категории', // Добавлено body:
+        scheduledDate: tz.TZDateTime.from(
+          scheduledDate,
+          tz.local,
+        ), // Добавлено scheduledDate:
+        notificationDetails: const NotificationDetails(
+          // Добавлено notificationDetails:
+          android: AndroidNotificationDetails(
+            'cashback_reminders',
+            'Напоминания о кэшбэке',
+            channelDescription: 'Уведомления о выборе кэшбэка',
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
+          iOS: DarwinNotificationDetails(),
+        ),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        // uiLocalNotificationDateInterpretation больше не нужен и удален из плагина
+        matchDateTimeComponents: DateTimeComponents.time,
+      );
+
+      _logger.i('[CashbackScheduler] Запланировано: ${reminder.id}');
+    } catch (e, stackTrace) {
+      _logger.e('[CashbackScheduler] Ошибка: $e');
+      _logger.e('[CashbackScheduler] Stack: $stackTrace');
+    }
+  }
+
+
+  Future<void> cancelReminder(String reminderId) async {
+    await _notificationsPlugin.cancel(id: reminderId.hashCode);
+    _logger.i('[CashbackScheduler] Отменено: $reminderId');
+  }
+
+  Future<void> cancelAllReminders() async {
+    await _notificationsPlugin.cancelAll();
+    _logger.i('[CashbackScheduler] Все напоминания отменены');
+  }
+
+  Future<void> rescheduleAllReminders(List<CashbackReminder> reminders) async {
+    await cancelAllReminders();
+    for (final reminder in reminders) {
+      if (reminder.isEnabled) {
+        await scheduleReminder(reminder);
+      }
+    }
+    _logger.i('[CashbackScheduler] Перепланировано ${reminders.length} напоминаний');
+  }
+}
+
+
+
+// ============================================
+// 28. ФАЙЛ: lib/features/cashback/services/ocr_service.dart
+// ============================================
+
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:logger/logger.dart';
+
+final _logger = Logger();
+
+/// Сервис OCR для распознавания скриншотов кэшбэка
+class OcrService {
+  final TextRecognizer _textRecognizer = TextRecognizer();
+
+  /// Распознать текст из изображения
+  Future<OcrResult> recognizeText(String imagePath) async {
+    try {
+      _logger.i('[OCR] Начинаю распознавание: $imagePath');
+
+      final inputImage = InputImage.fromFilePath(imagePath);
+      final recognizedText = await _textRecognizer.processImage(inputImage);
+
+      _logger.i('[OCR] Распознано ${recognizedText.blocks.length} блоков');
+
+      // Парсим распознанный текст
+      final cashbackItems = _parseCashbackItems(recognizedText);
+
+      return OcrResult(
+        rawText: recognizedText.text,
+        items: cashbackItems,
+        status: OcrStatus.potentialDraft,
+      );
+    } catch (e, stackTrace) {
+      _logger.e('[OCR] Ошибка распознавания: $e');
+      _logger.e('[OCR] Stack: $stackTrace');
+      return OcrResult(
+        rawText: '',
+        items: [],
+        status: OcrStatus.error,
+        error: e.toString(),
+      );
+    }
+  }
+
+  /// Парсинг распознанного текста в структуру кэшбэка
+  List<CashbackItem> _parseCashbackItems(RecognizedText text) {
+    final items = <CashbackItem>[];
+
+    for (final block in text.blocks) {
+      for (final line in block.lines) {
+        // Пример: "Пятёрочка  1 250.50 ₽  5%  62.53 ₽"
+        final parsed = _parseCashbackLine(line.text);
+        if (parsed != null) {
+          items.add(parsed);
+        }
+      }
+    }
+
+    return items;
+  }
+
+  /// Парсинг одной строки кэшбэка
+  CashbackItem? _parseCashbackLine(String line) {
+    // Упрощённый парсер (в реальности нужна сложная regex-логика)
+    final regex = RegExp(
+      r'(.+?)\s+(\d+[.,]?\d*)\s*₽?\s+(\d+)%\s+(\d+[.,]?\d*)\s*₽?',
+    );
+    final match = regex.firstMatch(line);
+
+    if (match == null) return null;
+
+    return CashbackItem(
+      merchantName: match.group(1)?.trim() ?? '',
+      amount: double.tryParse(match.group(2)!.replaceAll(',', '.')) ?? 0.0,
+      percent: int.tryParse(match.group(3)!) ?? 0,
+      cashbackAmount:
+          double.tryParse(match.group(4)!.replaceAll(',', '.')) ?? 0.0,
+    );
+  }
+
+  /// Освободить ресурсы
+  void dispose() {
+    _textRecognizer.close();
+  }
+}
+
+/// Результат OCR
+class OcrResult {
+  final String rawText;
+  final List<CashbackItem> items;
+  final OcrStatus status;
+  final String? error;
+
+  OcrResult({
+    required this.rawText,
+    required this.items,
+    required this.status,
+    this.error,
+  });
+}
+
+/// Элемент кэшбэка
+class CashbackItem {
+  String merchantName;
+  double amount;
+  int percent;
+  double cashbackAmount;
+  bool isSelected;
+
+  CashbackItem({
+    required this.merchantName,
+    required this.amount,
+    required this.percent,
+    required this.cashbackAmount,
+    this.isSelected = true,
+  });
+}
+
+/// Статус OCR
+enum OcrStatus { potentialDraft, approved, error }
+
 // ============================================
 // ИНФОРМАЦИЯ О РЕАЛИЗАЦИИ
 // ============================================
@@ -19761,17 +20833,27 @@ class TransactionActionsSheet extends StatelessWidget {
 //    - Конструктор общего баланса (include_in_personal/family_balance)
 //    - Savings Rate
 //
-// 3. Архитектура:
+// 3. Модуль умного кэшбэка (Раздел 6 ТЗ):
+//    - Очистка cashback_matrix по таймеру (monthly/weekly)
+//    - Google ML Kit OCR для скриншотов кэшбэка
+//    - Экран пред-валидации OCR с редактированием
+//    - Прогресс-бар лимитов выплат по категориям
+//    - Свитч "Свои/Семейные карты" с сортировкой по %
+//    - Планировщик локальных уведомлений (flutter_local_notifications)
+//
+// 4. Архитектура:
 //    - DAO-слой (Drift customSelect)
 //    - Repository-слой (абстракция)
 //    - Riverpod-провайдеры (реактивность)
-//    - DTO-модели (TransactionUiModel, CategoryExpense, AccountBalance)
+//    - DTO-модели (TransactionUiModel, CategoryExpense, AccountBalance, CashbackProgress)
 //
 // СЛЕДУЮЩИЕ ШАГИ:
 // - Подключить UI к реальным данным из Drift
 // - Реализовать действия long-press меню (обновление БД)
 // - Добавить фильтр/поиск на экран транзакций
 // - Реализовать экран дашборда
+// - Подключить OCR к реальным скриншотам из галереи
+// - Интегрировать WorkManager для очистки cashback_matrix
 //
 // ЗАВИСИМОСТИ:
 // - drift: ^2.34.0 (SQLite ORM)
@@ -19779,4 +20861,7 @@ class TransactionActionsSheet extends StatelessWidget {
 // - go_router: ^17.3.0 (Routing)
 // - supabase_flutter: ^2.15.0 (Backend)
 // - workmanager: ^0.9.0+3 (Background sync)
+// - google_mlkit_text_recognition: ^0.15.1 (OCR)
+// - flutter_local_notifications: ^22.0.1 (Уведомления)
+// - timezone: ^0.11.0 (Часовые зоны)
 // ============================================

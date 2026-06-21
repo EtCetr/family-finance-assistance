@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:family_financial_assistant/features/transactions/presentation/screens/transactions_screen.dart';
+import '../../features/transactions/presentation/screens/transactions_screen.dart';
+import '../../features/cashback/presentation/screens/cashback_screen.dart';
 
 // ==========================================
 // ЗАГЛУШКИ ЭКРАНОВ
@@ -19,13 +20,6 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       const Scaffold(body: Center(child: Text('Главная / Дашборд')));
-}
-
-class CashbackScreen extends StatelessWidget {
-  const CashbackScreen({super.key});
-  @override
-  Widget build(BuildContext context) =>
-      const Scaffold(body: Center(child: Text('Умный Кэшбэк')));
 }
 
 class CustomDashboardsScreen extends StatelessWidget {
@@ -55,7 +49,7 @@ class NotificationsScreen extends StatelessWidget {
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
-    initialLocation: '/transactions', // 👈 Изменил на /transactions для теста
+    initialLocation: '/cashback', // !!!МЕНЯТЬ ЭКРАН ДЛЯ ТЕСТА ЗДЕСЬ!!! В оригинале должно стоять /dashboard
     debugLogDiagnostics: true,
     routes: [
       GoRoute(path: '/auth', builder: (context, state) => const AuthScreen()),
