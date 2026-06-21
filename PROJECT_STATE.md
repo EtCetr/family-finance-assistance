@@ -1,14 +1,46 @@
-// Состояние проекта (Project State)
+// 1. Структура папок
+family_finance_app/
+├── lib/
+│   ├── core/
+│   │   ├── backgrounds/
+│   │   │   └── background_sync.dart
+│   │   ├── providers/
+│   │   │   └── auth_provider.dart
+│   │   ├── router/
+│   │   │   └── app_router.dart
+│   │   ├── theme/
+│   │   └── utils/
+│   ├── data/
+│   │   ├── datasources/
+│   │   ├── database/
+│   │   ├── models/
+│   │   └── repositories/
+│   ├── domain/
+│   │   ├── entities/
+│   │   ├── repositories/
+│   │   └── usecases/
+│   ├── features/
+│   │   ├── auth/
+│   │   ├── dashboard/
+│   │   ├── transactions/
+│   │   │   └── presentation/
+│   │   │       ├── models/
+│   │   │       ├── screens/
+│   │   │       └── widgets/
+│   │   ├── cashback/
+│   │   ├── custom_dashboards/
+│   │   ├── settings/
+│   │   └── notifications/
+│   └── main.dart
+└── pubspec.yaml
 
 
 
-// 1. Файл pubspec.yaml
+// 2. Файл pubspec.yaml
 
 
 
-// https://pub.dev/packages i took fresh versions from this official site and that what i find in. don't forget to use it
-
-name: family_financial_assistant
+ name: family_financial_assistant
 description: Мобильное приложение "Семейный Финансовый Ассистент" (Offline-First)
 publish_to: 'none'
 version: 1.0.0+1
@@ -68,7 +100,7 @@ dev_dependencies:
   
   # Code Generators
   build_runner: ^2.15.0             
-  freezed: ^4.0.0-dev.3                
+  freezed: ^3.2.5                  
   json_serializable: ^6.14.0         
   drift_dev: ^2.34.0
   riverpod_generator: ^4.0.4
@@ -78,58 +110,11 @@ flutter:
 
 
 
-// 2. Структура папок
+// 3. Файл lib/main.dart
 
 
 
-family_finance_app/
-├── lib/
-│   ├── core/                          # Глобальные настройки и инфраструктура
-│   │   ├── providers/                 # Глобальные Riverpod провайдеры
-│   │   │   └── auth_provider.dart     # Auth state provider
-│   │   ├── router/
-│   │   │   └── app_router.dart
-│   │   ├── theme/                     # (пока пусто, для будущих тем)
-│   │   ├── utils/                     # (пока пусто, для утилит)
-│   ├── data/                          # Слой данных (БД, API, репозитории)
-│   │   ├── datasources/               # Local (Drift/SQLite) и Remote (Supabase)
-│   │   ├── database/                  # Схемы таблиц Drift и DAO
-│   │   ├── models/                    # DTO и модели сериализации
-│   │   └── repositories/              # Реализации репозиториев
-│   ├── domain/                        # Бизнес-логика и сущности
-│   │   ├── entities/                  # Чистые сущности (без привязки к БД)
-│   │   ├── repositories/              # Абстрактные интерфейсы репозиториев
-│   │   └── usecases/                  # Сценарии использования
-│   ├── features/                      # UI и специфичная логика фич (Feature-First)
-│   │   ├── auth/
-│   │   ├── dashboard/
-│   │   ├── transactions/
-│   │   ├── cashback/
-│   │   ├── custom_dashboards/
-│   │   ├── settings/
-│   │   └── notifications/
-│   └── main.dart                      # Точка входа
-├── android/
-│   └── app/
-│       └── src/
-│           └── main/
-│               ├── jniLibs/           # Нативные библиотеки SQLite
-│               │   ├── arm64-v8a/
-│               │   │   └── libsqlite3.so
-│               │   ├── armeabi-v7a/
-│               │   │   └── libsqlite3.so
-│               │   └── x86_64/
-│               │       └── libsqlite3.so
-│               └── AndroidManifest.xml
-└── pubspec.yaml
-
-
-
-// 3. Файл main.dart
-
-
-
-import 'dart:io';
+ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -138,7 +123,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:workmanager/workmanager.dart';
-
+import 'core/backgrounds/background_sync.dart';
 import 'core/router/app_router.dart';
 // ============================================================
 // 1. WORKMANAGER (фоновая синхронизация БЕЗ уведомлений)
@@ -172,7 +157,6 @@ void backgroundSyncTask() {
   });
 }
 
-/// Настройка WorkManager
 /// Настройка WorkManager
 Future<void> configureWorkManager() async {
   await Workmanager().initialize(
@@ -236,6 +220,7 @@ Future<void> initializeNotifications() async {
 // ============================================================
 
 void main() async {
+  
   WidgetsFlutterBinding.ensureInitialized();
 
   // 1. Уведомления
@@ -247,8 +232,8 @@ void main() async {
     publishableKey: 'ВАШ-PUBLISHABLE-KEY',
   );
 
-  // 3. WorkManager для фоновой синхронизации
-  await configureWorkManager();
+  // 3. Фоновая синхронизация (WorkManager)
+  await configureBackgroundSync();
 
   // 4. TODO: Инициализация Drift
   // final database = AppDatabase();
@@ -294,15 +279,14 @@ class FamilyFinanceApp extends ConsumerWidget {
 
 
 
-// 4. Роутер (router.dart)
+// 4. Файл lib/core/router/app_router.dart
 
 
 
-import 'package:flutter/material.dart';
+ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../providers/auth_provider.dart';
+import 'package:family_financial_assistant/features/transactions/presentation/screens/transactions_screen.dart';
 
 // ==========================================
 // ЗАГЛУШКИ ЭКРАНОВ
@@ -320,13 +304,6 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       const Scaffold(body: Center(child: Text('Главная / Дашборд')));
-}
-
-class TransactionsScreen extends StatelessWidget {
-  const TransactionsScreen({super.key});
-  @override
-  Widget build(BuildContext context) =>
-      const Scaffold(body: Center(child: Text('Лог Операций')));
 }
 
 class CashbackScreen extends StatelessWidget {
@@ -362,11 +339,8 @@ class NotificationsScreen extends StatelessWidget {
 // ==========================================
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  // Следим за состоянием авторизации
-  final isLoggedIn = ref.watch(isLoggedInProvider);
-
   return GoRouter(
-    initialLocation: '/dashboard',
+    initialLocation: '/transactions', // 👈 Изменил на /transactions для теста
     debugLogDiagnostics: true,
     routes: [
       GoRoute(path: '/auth', builder: (context, state) => const AuthScreen()),
@@ -376,7 +350,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/transactions',
-        builder: (context, state) => const TransactionsScreen(),
+        builder: (context, state) =>
+            const TransactionsScreen(),
       ),
       GoRoute(
         path: '/cashback',
@@ -395,397 +370,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const NotificationsScreen(),
       ),
     ],
-    redirect: (context, state) {
-      final isAuthRoute = state.matchedLocation == '/auth';
-
-      // Если не авторизован и не на экране логина → редирект на логин
-      if (!isLoggedIn && !isAuthRoute) {
-        return '/auth';
-      }
-
-      // Если авторизован и на экране логина → редирект на дашборд
-      if (isLoggedIn && isAuthRoute) {
-        return '/dashboard';
-      }
-
-      return null;
-    },
   );
 });
 
 
 
-// 5. Файл database.dart
 
+// 5. Файл lib/data/database/database.dart
 
 
-import 'dart:io';
-import 'package:drift/drift.dart';
-import 'package:drift_flutter/drift_flutter.dart';
-import 'package:path_provider/path_provider.dart';
 
-part 'database.g.dart';
-
-// ============================================================
-// ENUM-ТИПЫ
-// ============================================================
-
-enum SyncStatus { pending, synced }
-
-enum AccountType { debit, credit, investmentBroker, cash }
-
-enum TransactionType { expense, income, transfer }
-
-enum AuditStatus { verified, suspicious, ignored }
-
-enum UserRole { admin, member }
-
-enum GroupStatus { active, left }
-
-enum CategoryType { expense, income }
-
-enum CashbackStatus { potential, approved }
-
-enum CashbackLifetimeType { monthly, weekly }
-
-enum LimitAlertMode { globalPercent, globalAmount, individual }
-
-enum NotificationAction { confirmed, dismissed }
-
-enum DashboardTriggerType { merchantName, bankCategory, keywordInComment }
-
-// ============================================================
-// 1-17. ТАБЛИЦЫ
-// ============================================================
-
-class Spaces extends Table {
-  TextColumn get id => text()();
-  TextColumn get name => text()();
-  TextColumn get encryptionSalt => text()();
-  BoolColumn get enableSecrecyMode =>
-      boolean().withDefault(const Constant(true))();
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
-
-  @override
-  Set<Column> get primaryKey => {id};
-}
-
-class Users extends Table {
-  TextColumn get id => text()();
-  TextColumn get spaceId => text().nullable().references(Spaces, #id)();
-  TextColumn get role => textEnum<UserRole>()();
-  TextColumn get displayName => text()();
-  TextColumn get groupStatus =>
-      textEnum<GroupStatus>().withDefault(const Constant('active'))();
-  DateTimeColumn get leftAt => dateTime().nullable()();
-  DateTimeColumn get rejoinedAt => dateTime().nullable()();
-
-  @override
-  Set<Column> get primaryKey => {id};
-}
-
-class Accounts extends Table {
-  TextColumn get id => text()();
-  TextColumn get userId => text().references(Users, #id)();
-  TextColumn get bankName => text()();
-  TextColumn get customName => text()();
-  TextColumn get cardNumberMask => text().nullable()();
-  TextColumn get accountType => textEnum<AccountType>()();
-  TextColumn get currency => text().withDefault(const Constant('RUB'))();
-  RealColumn get creditLimit => real().nullable()();
-  DateTimeColumn get gracePeriodEnd => dateTime().nullable()();
-  RealColumn get minPaymentAmount => real().nullable()();
-  RealColumn get currentBalance => real().withDefault(const Constant(0.0))();
-  BoolColumn get includeInPersonalBalance =>
-      boolean().withDefault(const Constant(true))();
-  BoolColumn get includeInFamilyBalance =>
-      boolean().withDefault(const Constant(false))();
-  BoolColumn get isSharedBalance =>
-      boolean().withDefault(const Constant(false))();
-  BoolColumn get isSharedExpenses =>
-      boolean().withDefault(const Constant(false))();
-  TextColumn get expenseDetailLevel =>
-      text().withDefault(const Constant('total_only'))();
-  BoolColumn get isSharedIncomes =>
-      boolean().withDefault(const Constant(false))();
-  TextColumn get incomeDetailLevel =>
-      text().withDefault(const Constant('total_only'))();
-
-  @override
-  Set<Column> get primaryKey => {id};
-}
-
-class Categories extends Table {
-  TextColumn get id => text()();
-  TextColumn get spaceId => text().nullable().references(Spaces, #id)();
-  TextColumn get parentId => text().nullable()();
-  TextColumn get name => text()();
-  TextColumn get type => textEnum<CategoryType>()();
-  BoolColumn get isPinnedForCashback =>
-      boolean().withDefault(const Constant(false))();
-
-  @override
-  Set<Column> get primaryKey => {id};
-}
-
-class Transactions extends Table {
-  TextColumn get id => text()();
-  TextColumn get accountId => text().references(Accounts, #id)();
-  TextColumn get bankTransactionId => text().nullable().unique()();
-  DateTimeColumn get date => dateTime()();
-  RealColumn get amount => real()();
-  TextColumn get originalCurrency => text().nullable()();
-  RealColumn get originalAmount => real().nullable()();
-  TextColumn get type => textEnum<TransactionType>()();
-  BoolColumn get isRefund => boolean().withDefault(const Constant(false))();
-  TextColumn get bankCategory => text().nullable()();
-  TextColumn get customCategoryId =>
-      text().nullable().references(Categories, #id)();
-  TextColumn get comment => text().nullable()();
-  BoolColumn get isUserEdited => boolean().withDefault(const Constant(false))();
-  TextColumn get syncStatus =>
-      textEnum<SyncStatus>().withDefault(const Constant('pending'))();
-  BoolColumn get isHiddenByCalendar =>
-      boolean().withDefault(const Constant(false))();
-  DateTimeColumn get hiddenUntilDate => dateTime().nullable()();
-  TextColumn get auditStatus =>
-      textEnum<AuditStatus>().withDefault(const Constant('verified'))();
-  BoolColumn get isArchivedForSpace =>
-      boolean().withDefault(const Constant(false))();
-  BoolColumn get businessMirror =>
-      boolean().withDefault(const Constant(false))();
-
-  @override
-  String? get tableName => 'transactions';
-
-  @override
-  Set<Column> get primaryKey => {id};
-}
-
-class CustomDashboards extends Table {
-  TextColumn get id => text()();
-  TextColumn get userId => text().references(Users, #id)();
-  TextColumn get dashboardName => text()();
-  BoolColumn get isEnabledPAndL =>
-      boolean().withDefault(const Constant(false))();
-
-  @override
-  Set<Column> get primaryKey => {id};
-}
-
-class DashboardTransactions extends Table {
-  TextColumn get dashboardId => text().references(CustomDashboards, #id)();
-  TextColumn get transactionId => text().references(Transactions, #id)();
-
-  @override
-  Set<Column> get primaryKey => {dashboardId, transactionId};
-}
-
-class DashboardRules extends Table {
-  TextColumn get id => text()();
-  TextColumn get dashboardId => text().references(CustomDashboards, #id)();
-  TextColumn get triggerType => textEnum<DashboardTriggerType>()();
-  TextColumn get triggerValue => text()();
-
-  @override
-  Set<Column> get primaryKey => {id};
-}
-
-class CategoryRules extends Table {
-  TextColumn get id => text()();
-  TextColumn get spaceId => text().references(Spaces, #id)();
-  TextColumn get bankName => text()(); // 'ANY' или конкретный банк
-  TextColumn get triggerString => text()();
-  TextColumn get targetCategoryId => text().references(Categories, #id)();
-
-  @override
-  Set<Column> get primaryKey => {id};
-}
-
-class TrustedCounterparties extends Table {
-  TextColumn get id => text()();
-  TextColumn get userId => text().references(Users, #id)();
-  TextColumn get counterpartyIdentity => text()();
-  BoolColumn get excludeExpenses =>
-      boolean().withDefault(const Constant(false))();
-  BoolColumn get excludeIncomes =>
-      boolean().withDefault(const Constant(false))();
-
-  @override
-  Set<Column> get primaryKey => {id};
-}
-
-class BudgetLimits extends Table {
-  TextColumn get id => text()();
-  TextColumn get spaceId => text().references(Spaces, #id)();
-  TextColumn get categoryId => text().references(Categories, #id)();
-  IntColumn get year => integer()();
-  IntColumn get month => integer()();
-  RealColumn get limitAmount => real()();
-  IntColumn get alertPercent => integer().nullable()();
-  RealColumn get alertAmount => real().nullable()();
-
-  @override
-  Set<Column> get primaryKey => {id};
-}
-
-class CashbackMatrix extends Table {
-  TextColumn get id => text()();
-  TextColumn get accountId => text().references(Accounts, #id)();
-  TextColumn get categoryName => text()();
-  RealColumn get percent => real()();
-  TextColumn get status => textEnum<CashbackStatus>()();
-  TextColumn get lifetimeType => textEnum<CashbackLifetimeType>()();
-  DateTimeColumn get expiresAt => dateTime().nullable()();
-
-  @override
-  Set<Column> get primaryKey => {id};
-}
-
-class ExchangeRates extends Table {
-  TextColumn get id => text()();
-  DateTimeColumn get date => dateTime()();
-  TextColumn get fromCurrency => text()();
-  TextColumn get toCurrency => text()();
-  RealColumn get rate => real()();
-  TextColumn get source => text()();
-
-  @override
-  Set<Column> get primaryKey => {id};
-}
-
-class AppSettings extends Table {
-  TextColumn get userId => text().references(Users, #id)();
-  TextColumn get baseCurrency => text().withDefault(const Constant('RUB'))();
-  BoolColumn get useHistoricalExchangeRate =>
-      boolean().withDefault(const Constant(true))();
-  BoolColumn get refundsOffsetExpenses =>
-      boolean().withDefault(const Constant(true))();
-  BoolColumn get inheritLimitFromPreviousMonth =>
-      boolean().withDefault(const Constant(false))();
-  BoolColumn get carryOverUnusedLimit =>
-      boolean().withDefault(const Constant(false))();
-  TextColumn get limitAlertMode =>
-      textEnum<LimitAlertMode>().withDefault(const Constant('globalPercent'))();
-  IntColumn get globalAlertPercent =>
-      integer().withDefault(const Constant(80))();
-  RealColumn get globalAlertAmount => real().nullable()();
-  RealColumn get largeTransactionThreshold =>
-      real().withDefault(const Constant(10000.0))();
-  IntColumn get secrecyTimeoutSeconds =>
-      integer().withDefault(const Constant(120))();
-  IntColumn get secrecyDaysBefore => integer().withDefault(const Constant(7))();
-  BoolColumn get enableReceiveOthersSyncErrors =>
-      boolean().withDefault(const Constant(false))();
-  TextColumn get digestConfig => text().nullable()();
-
-  @override
-  Set<Column> get primaryKey => {userId};
-}
-
-class Notifications extends Table {
-  TextColumn get id => text()();
-  TextColumn get userId => text().references(Users, #id)();
-  TextColumn get type => text()();
-  TextColumn get title => text()();
-  TextColumn get body => text()();
-  BoolColumn get isRead => boolean().withDefault(const Constant(false))();
-  TextColumn get relatedTransactionId => text().nullable()();
-  TextColumn get actionTaken => text().nullable()();
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
-
-  @override
-  Set<Column> get primaryKey => {id};
-}
-
-class CashbackReminders extends Table {
-  TextColumn get id => text()();
-  TextColumn get userId => text().references(Users, #id)();
-  DateTimeColumn get scheduledAt => dateTime()();
-  TextColumn get repeatType => text()(); // daily/weekly/monthly/none
-  BoolColumn get isEnabled => boolean().withDefault(const Constant(true))();
-
-  @override
-  Set<Column> get primaryKey => {id};
-}
-
-class SyncConflicts extends Table {
-  TextColumn get id => text()();
-  TextColumn get entityType => text()();
-  TextColumn get entityId => text()();
-  TextColumn get localValue => text()();
-  TextColumn get remoteValue => text()();
-  TextColumn get resolution => text().nullable()(); // 'local'/'remote'/'merged'
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
-
-  @override
-  Set<Column> get primaryKey => {id};
-}
-
-@DriftDatabase(
-  tables: [
-    Spaces,
-    Users,
-    Accounts,
-    Categories,
-    Transactions,
-    CustomDashboards,
-    DashboardTransactions,
-    DashboardRules,
-    CategoryRules,
-    TrustedCounterparties,
-    BudgetLimits,
-    CashbackMatrix,
-    ExchangeRates,
-    AppSettings,
-    Notifications,
-    CashbackReminders,
-    SyncConflicts,
-  ],
-)
-class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
-
-  @override
-  int get schemaVersion => 1;
-
-  @override
-  MigrationStrategy get migration => MigrationStrategy(
-    onCreate: (Migrator m) async {
-      await m.createAll();
-    },
-    onUpgrade: (Migrator m, int from, int to) async {
-      // Будущие миграции
-    },
-    beforeOpen: (details) async {
-      await customStatement('PRAGMA foreign_keys = ON');
-      await customStatement('PRAGMA journal_mode = WAL');
-    },
-  );
-}
-
-// ============================================================
-// 🔌 ОТКРЫТИЕ СОЕДИНЕНИЯ
-// ============================================================
-LazyDatabase _openConnection() {
-  return LazyDatabase(() async {
-    final dbFolder = await getApplicationDocumentsDirectory();
-    final file = File('${dbFolder.path}/family_finance.sqlite');
-
-    return driftDatabase(
-      name: 'family_finance',
-      native: DriftNativeOptions(databasePath: () async => file.path),
-    );
-  });
-}
-
-
-
-// 6. Файл database.dart
-
-
-
-import 'dart:io';
+ import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:path_provider/path_provider.dart';
@@ -1148,11 +743,11 @@ LazyDatabase _openConnection() {
 
 
 
-// 7. Файл database.g.dart
+// 6. Файл lib/data/database/database.g.dart
 
 
 
-// GENERATED CODE - DO NOT MODIFY BY HAND
+ // GENERATED CODE - DO NOT MODIFY BY HAND
 
 part of 'database.dart';
 
@@ -18443,11 +18038,11 @@ class $AppDatabaseManager {
 
 
 
-// 8. Файл transaction_dao.dart
+// 7. Файл lib/data/database/transactions_dao.dart
 
 
 
-import 'package:drift/drift.dart';
+ import 'package:drift/drift.dart';
 import 'database.dart';
 
 part 'transactions_dao.g.dart';
@@ -18526,11 +18121,11 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
 
 
 
-// 9. Файл transaction_dao.g.dart
+// 8. Файл lib/data/database/transactions_dao.g.dart
 
 
 
-// GENERATED CODE - DO NOT MODIFY BY HAND
+ // GENERATED CODE - DO NOT MODIFY BY HAND
 
 part of 'transactions_dao.dart';
 
@@ -18562,11 +18157,11 @@ class TransactionsDaoManager {
 
 
 
-// 10. Файл sync_engine.dart
+// 9. Файл lib/data/repositories/sync_engine.dart
 
 
 
-import 'dart:convert';
+ import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../database/database.dart';
@@ -18790,11 +18385,11 @@ class SyncResult {
 
 
 
-// 11. Файл background_sync.dart
+// 10. Файл lib/core/backgrounds/background_sync.dart
 
 
 
-import 'package:flutter/foundation.dart';
+ import 'package:flutter/foundation.dart';
 import 'package:workmanager/workmanager.dart';
 import '../../data/database/database.dart';
 import '../../data/datasources/supabase_client.dart';
@@ -18871,11 +18466,11 @@ Future<void> cancelBackgroundSync() async {
 
 
 
-// 12. Файл supabase_client.dart
+// 11. Файл lib/data/datasources/supabase_client.dart
 
 
 
-import 'package:supabase_flutter/supabase_flutter.dart';
+ import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Singleton клиент для работы с Supabase
 class SupabaseClientService {
@@ -18926,4 +18521,435 @@ class SupabaseClientService {
 
 
 
-// 13. 
+// 12. Файл lib/features/transactions/presentation/models/transaction_ui_model.dart
+
+
+
+ import 'package:flutter/material.dart';
+
+/// Плоская DTO-модель для отображения транзакции в UI.
+/// Данные сюда должны приходить из UseCase/Repository после JOIN таблиц.
+class TransactionUiModel {
+  final String id;
+  final String accountName;
+  final String cardMask; // Последние 4 цифры
+  final String categoryOrComment;
+  final DateTime date;
+  final double amount;
+  final bool isIncome; // true = доход, false = расход
+  final bool isRefund; // Флаг возврата (ТЗ п.8)
+  final bool isHidden; // Флаг секретности (ТЗ п.12)
+  final IconData categoryIcon;
+
+  TransactionUiModel({
+    required this.id,
+    required this.accountName,
+    required this.cardMask,
+    required this.categoryOrComment,
+    required this.date,
+    required this.amount,
+    required this.isIncome,
+    this.isRefund = false,
+    this.isHidden = false,
+    this.categoryIcon = Icons.receipt_long,
+  });
+
+  String get formattedAmount {
+    final formatted = amount
+        .toStringAsFixed(2)
+        .replaceAll(RegExp(r'\.00$'), '');
+    final sign = isIncome ? '+ ' : '- ';
+    return '$sign$formatted ₽';
+  }
+
+  String get formattedDate {
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    return '$day.$month • $hour:$minute';
+  }
+}
+
+
+
+// 13. Файл lib/features/transactions/presentation/screens/transactions_screen.dart
+
+
+
+ import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/transaction_ui_model.dart';
+import '../widgets/transaction_card.dart';
+
+// TODO: Замените на реальный Provider из repositories/
+final transactionsListProvider = Provider<List<TransactionUiModel>>((ref) {
+  return MockData.transactions;
+});
+
+class TransactionsScreen extends ConsumerWidget {
+  const TransactionsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final transactions = ref.watch(transactionsListProvider);
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Лог операций'),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.filter_list),
+            onPressed: () {
+              // TODO: Открыть фильтр/поиск
+            },
+          ),
+        ],
+      ),
+      body: transactions.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.inbox_outlined,
+                    size: 64,
+                    color: theme.colorScheme.outline,
+                  ),
+                  const SizedBox(height: 16),
+                  Text('Операций пока нет', style: theme.textTheme.titleLarge),
+                ],
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              itemCount: transactions.length,
+              itemBuilder: (context, index) {
+                return TransactionCard(
+                  transaction: transactions[index],
+                  onActionSelected: (action) {
+                    _handleAction(context, transactions[index], action);
+                  },
+                );
+              },
+            ),
+    );
+  }
+
+  void _handleAction(
+    BuildContext context,
+    TransactionUiModel tx,
+    String action,
+  ) {
+    // TODO: Вызов UseCase для изменения состояния в БД (Drift)
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Действие "$action" для транзакции ${tx.id}'),
+        duration: const Duration(seconds: 1),
+      ),
+    );
+  }
+}
+
+// ==========================================
+// MOCK DATA (Для демонстрации верстки)
+// ==========================================
+class MockData {
+  static final List<TransactionUiModel> transactions = [
+    TransactionUiModel(
+      id: '1',
+      accountName: 'T-Bank Black',
+      cardMask: '4321',
+      categoryOrComment: 'Продукты / Пятёрочка',
+      date: DateTime.now().subtract(const Duration(hours: 2)),
+      amount: 1540.50,
+      isIncome: false,
+      categoryIcon: Icons.shopping_cart,
+    ),
+    TransactionUiModel(
+      id: '2',
+      accountName: 'Сбербанк *1234',
+      cardMask: '1234',
+      categoryOrComment: 'Зарплата',
+      date: DateTime.now().subtract(const Duration(days: 1)),
+      amount: 85000.00,
+      isIncome: true,
+      categoryIcon: Icons.work,
+    ),
+    TransactionUiModel(
+      id: '3',
+      accountName: 'Альфа-Банк',
+      cardMask: '5678',
+      categoryOrComment: 'Кафе / Кофе с собой',
+      date: DateTime.now().subtract(const Duration(days: 2)),
+      amount: 350.00,
+      isIncome: false,
+      isRefund: false,
+      categoryIcon: Icons.restaurant,
+    ),
+    TransactionUiModel(
+      id: '4',
+      accountName: 'Наличные',
+      cardMask: '----',
+      categoryOrComment: 'Подарок Кате 🎁',
+      date: DateTime.now().subtract(const Duration(days: 3)),
+      amount: 5000.00,
+      isIncome: false,
+      isHidden: true, // Засекречено (ТЗ п.12)
+      categoryIcon: Icons.card_giftcard,
+    ),
+  ];
+}
+
+
+
+// 14. Файл lib/features/transactions/presentation/widgets/transaction_card.dart
+
+
+
+ import 'package:flutter/material.dart';
+import '../models/transaction_ui_model.dart';
+import 'transaction_actions_sheet.dart';
+
+class TransactionCard extends StatelessWidget {
+  final TransactionUiModel transaction;
+  final ValueChanged<String> onActionSelected;
+
+  const TransactionCard({
+    super.key,
+    required this.transaction,
+    required this.onActionSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    // Цвет суммы: зелёный для доходов, красный для расходов (согласно ТЗ)
+    final amountColor = transaction.isIncome
+        ? const Color(0xFF2E7D32) // MD3 Green
+        : theme.colorScheme.error; // MD3 Red/Error
+
+    return GestureDetector(
+      onLongPress: () => _showContextMenu(context),
+      child: Card(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        elevation: 0,
+        color: theme.colorScheme.surfaceContainerLow, // MD3 Card Background
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // === ЛЕВАЯ ЧАСТЬ: Иконка + Счёт + Маска ===
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primaryContainer,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      transaction.categoryIcon,
+                      color: theme.colorScheme.onPrimaryContainer,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    '${transaction.accountName} •• ${transaction.cardMask}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(width: 16),
+
+              // === ЦЕНТР: Комментарий/Категория + Время ===
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            transaction.categoryOrComment,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (transaction.isHidden) ...[
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.visibility_off,
+                            size: 16,
+                            color: theme.colorScheme.outline,
+                          ),
+                        ],
+                        if (transaction.isRefund) ...[
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.assignment_return,
+                            size: 16,
+                            color: theme.colorScheme.tertiary,
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      transaction.formattedDate,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(width: 16),
+
+              // === ПРАВАЯ ЧАСТЬ: Сумма ===
+              Text(
+                transaction.formattedAmount,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: amountColor,
+                  fontWeight: FontWeight.bold,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showContextMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => TransactionActionsSheet(
+        transaction: transaction,
+        onActionSelected: (action) {
+          Navigator.pop(ctx);
+          onActionSelected(action);
+        },
+      ),
+    );
+  }
+}
+
+
+
+// 15. Файл lib/features/transactions/presentation/widgets/transaction_actions_sheet.dart
+
+
+
+ import 'package:flutter/material.dart';
+import '../models/transaction_ui_model.dart';
+
+class TransactionActionsSheet extends StatelessWidget {
+  final TransactionUiModel transaction;
+  final ValueChanged<String> onActionSelected;
+
+  const TransactionActionsSheet({
+    super.key,
+    required this.transaction,
+    required this.onActionSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Material(
+      color: theme.colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      clipBehavior:
+          Clip.antiAlias, // Важно: обрезает дочерние элементы по скруглению
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Drag Handle (MD3)
+          Container(
+            margin: const EdgeInsets.only(top: 12, bottom: 8),
+            width: 32,
+            height: 4,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: Text(
+              'Действия с операцией',
+              style: theme.textTheme.titleLarge,
+            ),
+          ),
+          const Divider(height: 1),
+
+          // Опции меню согласно ТЗ
+          _buildActionTile(
+            context,
+            icon: Icons.visibility_off_outlined,
+            title: 'Засекретить (Подарок)',
+            action: 'hide_gift',
+            color: theme.colorScheme.primary,
+          ),
+          _buildActionTile(
+            context,
+            icon: Icons.cancel_outlined,
+            title: 'Исключить из учёта (Сторно)',
+            action: 'exclude',
+            color: theme.colorScheme.error,
+          ),
+          _buildActionTile(
+            context,
+            icon: Icons.assignment_return_outlined,
+            title: 'Пометить как возврат',
+            action: 'mark_refund',
+            color: theme.colorScheme.tertiary,
+          ),
+          _buildActionTile(
+            context,
+            icon: Icons.edit_note_outlined,
+            title: 'Изменить категорию',
+            action: 'change_category',
+            color: theme.colorScheme.onSurface,
+          ),
+
+          SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionTile(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String action,
+    required Color color,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: color),
+      title: Text(title, style: TextStyle(color: color)),
+      onTap: () => onActionSelected(action),
+    );
+  }
+}
