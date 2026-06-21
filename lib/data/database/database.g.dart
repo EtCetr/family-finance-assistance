@@ -8569,6 +8569,17 @@ class $SyncConflictsTable extends SyncConflicts
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _resolutionMeta = const VerificationMeta(
+    'resolution',
+  );
+  @override
+  late final GeneratedColumn<String> resolution = GeneratedColumn<String>(
+    'resolution',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -8588,6 +8599,7 @@ class $SyncConflictsTable extends SyncConflicts
     entityId,
     localValue,
     remoteValue,
+    resolution,
     createdAt,
   ];
   @override
@@ -8642,6 +8654,12 @@ class $SyncConflictsTable extends SyncConflicts
     } else if (isInserting) {
       context.missing(_remoteValueMeta);
     }
+    if (data.containsKey('resolution')) {
+      context.handle(
+        _resolutionMeta,
+        resolution.isAcceptableOrUnknown(data['resolution']!, _resolutionMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -8677,6 +8695,10 @@ class $SyncConflictsTable extends SyncConflicts
         DriftSqlType.string,
         data['${effectivePrefix}remote_value'],
       )!,
+      resolution: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}resolution'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -8696,6 +8718,7 @@ class SyncConflict extends DataClass implements Insertable<SyncConflict> {
   final String entityId;
   final String localValue;
   final String remoteValue;
+  final String? resolution;
   final DateTime createdAt;
   const SyncConflict({
     required this.id,
@@ -8703,6 +8726,7 @@ class SyncConflict extends DataClass implements Insertable<SyncConflict> {
     required this.entityId,
     required this.localValue,
     required this.remoteValue,
+    this.resolution,
     required this.createdAt,
   });
   @override
@@ -8713,6 +8737,9 @@ class SyncConflict extends DataClass implements Insertable<SyncConflict> {
     map['entity_id'] = Variable<String>(entityId);
     map['local_value'] = Variable<String>(localValue);
     map['remote_value'] = Variable<String>(remoteValue);
+    if (!nullToAbsent || resolution != null) {
+      map['resolution'] = Variable<String>(resolution);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -8724,6 +8751,9 @@ class SyncConflict extends DataClass implements Insertable<SyncConflict> {
       entityId: Value(entityId),
       localValue: Value(localValue),
       remoteValue: Value(remoteValue),
+      resolution: resolution == null && nullToAbsent
+          ? const Value.absent()
+          : Value(resolution),
       createdAt: Value(createdAt),
     );
   }
@@ -8739,6 +8769,7 @@ class SyncConflict extends DataClass implements Insertable<SyncConflict> {
       entityId: serializer.fromJson<String>(json['entityId']),
       localValue: serializer.fromJson<String>(json['localValue']),
       remoteValue: serializer.fromJson<String>(json['remoteValue']),
+      resolution: serializer.fromJson<String?>(json['resolution']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -8751,6 +8782,7 @@ class SyncConflict extends DataClass implements Insertable<SyncConflict> {
       'entityId': serializer.toJson<String>(entityId),
       'localValue': serializer.toJson<String>(localValue),
       'remoteValue': serializer.toJson<String>(remoteValue),
+      'resolution': serializer.toJson<String?>(resolution),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -8761,6 +8793,7 @@ class SyncConflict extends DataClass implements Insertable<SyncConflict> {
     String? entityId,
     String? localValue,
     String? remoteValue,
+    Value<String?> resolution = const Value.absent(),
     DateTime? createdAt,
   }) => SyncConflict(
     id: id ?? this.id,
@@ -8768,6 +8801,7 @@ class SyncConflict extends DataClass implements Insertable<SyncConflict> {
     entityId: entityId ?? this.entityId,
     localValue: localValue ?? this.localValue,
     remoteValue: remoteValue ?? this.remoteValue,
+    resolution: resolution.present ? resolution.value : this.resolution,
     createdAt: createdAt ?? this.createdAt,
   );
   SyncConflict copyWithCompanion(SyncConflictsCompanion data) {
@@ -8783,6 +8817,9 @@ class SyncConflict extends DataClass implements Insertable<SyncConflict> {
       remoteValue: data.remoteValue.present
           ? data.remoteValue.value
           : this.remoteValue,
+      resolution: data.resolution.present
+          ? data.resolution.value
+          : this.resolution,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -8795,14 +8832,22 @@ class SyncConflict extends DataClass implements Insertable<SyncConflict> {
           ..write('entityId: $entityId, ')
           ..write('localValue: $localValue, ')
           ..write('remoteValue: $remoteValue, ')
+          ..write('resolution: $resolution, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, entityType, entityId, localValue, remoteValue, createdAt);
+  int get hashCode => Object.hash(
+    id,
+    entityType,
+    entityId,
+    localValue,
+    remoteValue,
+    resolution,
+    createdAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -8812,6 +8857,7 @@ class SyncConflict extends DataClass implements Insertable<SyncConflict> {
           other.entityId == this.entityId &&
           other.localValue == this.localValue &&
           other.remoteValue == this.remoteValue &&
+          other.resolution == this.resolution &&
           other.createdAt == this.createdAt);
 }
 
@@ -8821,6 +8867,7 @@ class SyncConflictsCompanion extends UpdateCompanion<SyncConflict> {
   final Value<String> entityId;
   final Value<String> localValue;
   final Value<String> remoteValue;
+  final Value<String?> resolution;
   final Value<DateTime> createdAt;
   final Value<int> rowid;
   const SyncConflictsCompanion({
@@ -8829,6 +8876,7 @@ class SyncConflictsCompanion extends UpdateCompanion<SyncConflict> {
     this.entityId = const Value.absent(),
     this.localValue = const Value.absent(),
     this.remoteValue = const Value.absent(),
+    this.resolution = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -8838,6 +8886,7 @@ class SyncConflictsCompanion extends UpdateCompanion<SyncConflict> {
     required String entityId,
     required String localValue,
     required String remoteValue,
+    this.resolution = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -8851,6 +8900,7 @@ class SyncConflictsCompanion extends UpdateCompanion<SyncConflict> {
     Expression<String>? entityId,
     Expression<String>? localValue,
     Expression<String>? remoteValue,
+    Expression<String>? resolution,
     Expression<DateTime>? createdAt,
     Expression<int>? rowid,
   }) {
@@ -8860,6 +8910,7 @@ class SyncConflictsCompanion extends UpdateCompanion<SyncConflict> {
       if (entityId != null) 'entity_id': entityId,
       if (localValue != null) 'local_value': localValue,
       if (remoteValue != null) 'remote_value': remoteValue,
+      if (resolution != null) 'resolution': resolution,
       if (createdAt != null) 'created_at': createdAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -8871,6 +8922,7 @@ class SyncConflictsCompanion extends UpdateCompanion<SyncConflict> {
     Value<String>? entityId,
     Value<String>? localValue,
     Value<String>? remoteValue,
+    Value<String?>? resolution,
     Value<DateTime>? createdAt,
     Value<int>? rowid,
   }) {
@@ -8880,6 +8932,7 @@ class SyncConflictsCompanion extends UpdateCompanion<SyncConflict> {
       entityId: entityId ?? this.entityId,
       localValue: localValue ?? this.localValue,
       remoteValue: remoteValue ?? this.remoteValue,
+      resolution: resolution ?? this.resolution,
       createdAt: createdAt ?? this.createdAt,
       rowid: rowid ?? this.rowid,
     );
@@ -8903,6 +8956,9 @@ class SyncConflictsCompanion extends UpdateCompanion<SyncConflict> {
     if (remoteValue.present) {
       map['remote_value'] = Variable<String>(remoteValue.value);
     }
+    if (resolution.present) {
+      map['resolution'] = Variable<String>(resolution.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -8920,6 +8976,7 @@ class SyncConflictsCompanion extends UpdateCompanion<SyncConflict> {
           ..write('entityId: $entityId, ')
           ..write('localValue: $localValue, ')
           ..write('remoteValue: $remoteValue, ')
+          ..write('resolution: $resolution, ')
           ..write('createdAt: $createdAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -17028,6 +17085,7 @@ typedef $$SyncConflictsTableCreateCompanionBuilder =
       required String entityId,
       required String localValue,
       required String remoteValue,
+      Value<String?> resolution,
       Value<DateTime> createdAt,
       Value<int> rowid,
     });
@@ -17038,6 +17096,7 @@ typedef $$SyncConflictsTableUpdateCompanionBuilder =
       Value<String> entityId,
       Value<String> localValue,
       Value<String> remoteValue,
+      Value<String?> resolution,
       Value<DateTime> createdAt,
       Value<int> rowid,
     });
@@ -17073,6 +17132,11 @@ class $$SyncConflictsTableFilterComposer
 
   ColumnFilters<String> get remoteValue => $composableBuilder(
     column: $table.remoteValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get resolution => $composableBuilder(
+    column: $table.resolution,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -17116,6 +17180,11 @@ class $$SyncConflictsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get resolution => $composableBuilder(
+    column: $table.resolution,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -17149,6 +17218,11 @@ class $$SyncConflictsTableAnnotationComposer
 
   GeneratedColumn<String> get remoteValue => $composableBuilder(
     column: $table.remoteValue,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get resolution => $composableBuilder(
+    column: $table.resolution,
     builder: (column) => column,
   );
 
@@ -17192,6 +17266,7 @@ class $$SyncConflictsTableTableManager
                 Value<String> entityId = const Value.absent(),
                 Value<String> localValue = const Value.absent(),
                 Value<String> remoteValue = const Value.absent(),
+                Value<String?> resolution = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SyncConflictsCompanion(
@@ -17200,6 +17275,7 @@ class $$SyncConflictsTableTableManager
                 entityId: entityId,
                 localValue: localValue,
                 remoteValue: remoteValue,
+                resolution: resolution,
                 createdAt: createdAt,
                 rowid: rowid,
               ),
@@ -17210,6 +17286,7 @@ class $$SyncConflictsTableTableManager
                 required String entityId,
                 required String localValue,
                 required String remoteValue,
+                Value<String?> resolution = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SyncConflictsCompanion.insert(
@@ -17218,6 +17295,7 @@ class $$SyncConflictsTableTableManager
                 entityId: entityId,
                 localValue: localValue,
                 remoteValue: remoteValue,
+                resolution: resolution,
                 createdAt: createdAt,
                 rowid: rowid,
               ),

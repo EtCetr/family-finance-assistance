@@ -1,46 +1,84 @@
-// 1. Структура папок
+// ============================================
+// PROJECT STATE - Семейный Финансовый Ассистент
+// ============================================
+// Последнее обновление: 21.06.2026 17:54
+// Статус: Активная разработка
+// 
+// РЕАЛИЗОВАННЫЕ РАЗДЕЛЫ ТЗ:
+// ✅ Раздел 3: Базовая структура БД (17 таблиц)
+// ✅ Раздел 4: Таблица транзакций и кастомных вкладок
+// ✅ Раздел 5: Алгоритмы расчётов (SQL-запросы)
+// ✅ Раздел 14.1: Экран "Лог операций" (UI)
+// 
+// ТЕКУЩИЙ ЭТАП:
+// 🔄 Подключение UI к Riverpod-провайдерам
+// 🔄 Интеграция с реальной БД Drift
+// ============================================
+
+// ============================================
+// 2. СТРУКТУРА ПРОЕКТА (Feature-First Architecture)
+// ============================================
 family_finance_app/
 ├── lib/
-│   ├── core/
+│   ├── core/                          # Глобальная инфраструктура
 │   │   ├── backgrounds/
-│   │   │   └── background_sync.dart
+│   │   │   └── background_sync.dart   # WorkManager синхронизация
 │   │   ├── providers/
-│   │   │   └── auth_provider.dart
+│   │   │   ├── auth_provider.dart     # Auth state (заглушка)
+│   │   │   └── analytics_providers.dart  # 🆕 Аналитические провайдеры
 │   │   ├── router/
-│   │   │   └── app_router.dart
-│   │   ├── theme/
-│   │   └── utils/
-│   ├── data/
+│   │   │   └── app_router.dart        # GoRouter конфигурация
+│   │   ├── theme/                     # (будущие темы)
+│   │   └── utils/                     # (будущие утилиты)
+│   ├── data/                          # Слой данных
 │   │   ├── datasources/
+│   │   │   └── supabase_client.dart   # Supabase singleton
 │   │   ├── database/
-│   │   ├── models/
+│   │   │   ├── database.dart          # Drift схемы (17 таблиц)
+│   │   │   ├── database.g.dart        # Drift generated
+│   │   │   ├── transactions_dao.dart  # DAO для транзакций
+│   │   │   ├── transactions_dao.g.dart
+│   │   │   ├── analytics_dao.dart     # 🆕 DAO для аналитики
+│   │   │   └── analytics_dao.g.dart   # 🆕 Generated
+│   │   ├── models/                    # DTO модели
 │   │   └── repositories/
-│   ├── domain/
+│   │       ├── sync_engine.dart       # Синхронизация Drift<->Supabase
+│   │       └── analytics_repository.dart # 🆕 Repository аналитики
+│   ├── domain/                        # Бизнес-логика (пока пусто)
 │   │   ├── entities/
 │   │   ├── repositories/
 │   │   └── usecases/
-│   ├── features/
-│   │   ├── auth/
-│   │   ├── dashboard/
-│   │   ├── transactions/
+│   ├── features/                      # Feature-First модули
+│   │   ├── auth/                      # (будущая авторизация)
+│   │   ├── dashboard/                 # (будущий дашборд)
+│   │   ├── transactions/              # 🆕 Транзакции
 │   │   │   └── presentation/
 │   │   │       ├── models/
+│   │   │       │   └── transaction_ui_model.dart  # UI DTO
 │   │   │       ├── screens/
+│   │   │       │   └── transactions_screen.dart   # 🆕 Экран лога
 │   │   │       └── widgets/
-│   │   ├── cashback/
-│   │   ├── custom_dashboards/
-│   │   ├── settings/
-│   │   └── notifications/
-│   └── main.dart
+│   │   │           ├── transaction_card.dart      # 🆕 Карточка
+│   │   │           └── transaction_actions_sheet.dart # 🆕 Long-press меню
+│   │   ├── cashback/                  # (будущий кэшбэк)
+│   │   ├── custom_dashboards/         # (будущие кастомные вкладки)
+│   │   ├── settings/                  # (будущие настройки)
+│   │   └── notifications/             # (будущие уведомления)
+│   └── main.dart                      # Точка входа
+├── android/
+│   └── app/
+│       └── src/main/
+│           ├── jniLibs/               # SQLite native libs
+│           └── AndroidManifest.xml
 └── pubspec.yaml
 
 
 
-// 2. Файл pubspec.yaml
+// ============================================
+// 3. ФАЙЛ: pubspec.yaml
+// ============================================
 
-
-
- name: family_financial_assistant
+name: family_financial_assistant
 description: Мобильное приложение "Семейный Финансовый Ассистент" (Offline-First)
 publish_to: 'none'
 version: 1.0.0+1
@@ -110,11 +148,11 @@ flutter:
 
 
 
-// 3. Файл lib/main.dart
+// ============================================
+// 4. ФАЙЛ: lib/main.dart
+// ============================================
 
-
-
- import 'dart:io';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -279,11 +317,11 @@ class FamilyFinanceApp extends ConsumerWidget {
 
 
 
-// 4. Файл lib/core/router/app_router.dart
+// ============================================
+// 5. ФАЙЛ: lib/core/router/app_router.dart
+// ============================================
 
-
-
- import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:family_financial_assistant/features/transactions/presentation/screens/transactions_screen.dart';
@@ -376,11 +414,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
 
 
-// 5. Файл lib/data/database/database.dart
+// ============================================
+// 6. ФАЙЛ: lib/data/database/database.dart
+// ============================================
 
-
-
- import 'dart:io';
+import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:path_provider/path_provider.dart';
@@ -743,11 +781,11 @@ LazyDatabase _openConnection() {
 
 
 
-// 6. Файл lib/data/database/database.g.dart
+// ============================================
+// 7. ФАЙЛ: lib/data/database/database.g.dart
+// ============================================
 
-
-
- // GENERATED CODE - DO NOT MODIFY BY HAND
+// GENERATED CODE - DO NOT MODIFY BY HAND
 
 part of 'database.dart';
 
@@ -9318,6 +9356,17 @@ class $SyncConflictsTable extends SyncConflicts
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _resolutionMeta = const VerificationMeta(
+    'resolution',
+  );
+  @override
+  late final GeneratedColumn<String> resolution = GeneratedColumn<String>(
+    'resolution',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -9337,6 +9386,7 @@ class $SyncConflictsTable extends SyncConflicts
     entityId,
     localValue,
     remoteValue,
+    resolution,
     createdAt,
   ];
   @override
@@ -9391,6 +9441,12 @@ class $SyncConflictsTable extends SyncConflicts
     } else if (isInserting) {
       context.missing(_remoteValueMeta);
     }
+    if (data.containsKey('resolution')) {
+      context.handle(
+        _resolutionMeta,
+        resolution.isAcceptableOrUnknown(data['resolution']!, _resolutionMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -9426,6 +9482,10 @@ class $SyncConflictsTable extends SyncConflicts
         DriftSqlType.string,
         data['${effectivePrefix}remote_value'],
       )!,
+      resolution: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}resolution'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -9445,6 +9505,7 @@ class SyncConflict extends DataClass implements Insertable<SyncConflict> {
   final String entityId;
   final String localValue;
   final String remoteValue;
+  final String? resolution;
   final DateTime createdAt;
   const SyncConflict({
     required this.id,
@@ -9452,6 +9513,7 @@ class SyncConflict extends DataClass implements Insertable<SyncConflict> {
     required this.entityId,
     required this.localValue,
     required this.remoteValue,
+    this.resolution,
     required this.createdAt,
   });
   @override
@@ -9462,6 +9524,9 @@ class SyncConflict extends DataClass implements Insertable<SyncConflict> {
     map['entity_id'] = Variable<String>(entityId);
     map['local_value'] = Variable<String>(localValue);
     map['remote_value'] = Variable<String>(remoteValue);
+    if (!nullToAbsent || resolution != null) {
+      map['resolution'] = Variable<String>(resolution);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -9473,6 +9538,9 @@ class SyncConflict extends DataClass implements Insertable<SyncConflict> {
       entityId: Value(entityId),
       localValue: Value(localValue),
       remoteValue: Value(remoteValue),
+      resolution: resolution == null && nullToAbsent
+          ? const Value.absent()
+          : Value(resolution),
       createdAt: Value(createdAt),
     );
   }
@@ -9488,6 +9556,7 @@ class SyncConflict extends DataClass implements Insertable<SyncConflict> {
       entityId: serializer.fromJson<String>(json['entityId']),
       localValue: serializer.fromJson<String>(json['localValue']),
       remoteValue: serializer.fromJson<String>(json['remoteValue']),
+      resolution: serializer.fromJson<String?>(json['resolution']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -9500,6 +9569,7 @@ class SyncConflict extends DataClass implements Insertable<SyncConflict> {
       'entityId': serializer.toJson<String>(entityId),
       'localValue': serializer.toJson<String>(localValue),
       'remoteValue': serializer.toJson<String>(remoteValue),
+      'resolution': serializer.toJson<String?>(resolution),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -9510,6 +9580,7 @@ class SyncConflict extends DataClass implements Insertable<SyncConflict> {
     String? entityId,
     String? localValue,
     String? remoteValue,
+    Value<String?> resolution = const Value.absent(),
     DateTime? createdAt,
   }) => SyncConflict(
     id: id ?? this.id,
@@ -9517,6 +9588,7 @@ class SyncConflict extends DataClass implements Insertable<SyncConflict> {
     entityId: entityId ?? this.entityId,
     localValue: localValue ?? this.localValue,
     remoteValue: remoteValue ?? this.remoteValue,
+    resolution: resolution.present ? resolution.value : this.resolution,
     createdAt: createdAt ?? this.createdAt,
   );
   SyncConflict copyWithCompanion(SyncConflictsCompanion data) {
@@ -9532,6 +9604,9 @@ class SyncConflict extends DataClass implements Insertable<SyncConflict> {
       remoteValue: data.remoteValue.present
           ? data.remoteValue.value
           : this.remoteValue,
+      resolution: data.resolution.present
+          ? data.resolution.value
+          : this.resolution,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -9544,14 +9619,22 @@ class SyncConflict extends DataClass implements Insertable<SyncConflict> {
           ..write('entityId: $entityId, ')
           ..write('localValue: $localValue, ')
           ..write('remoteValue: $remoteValue, ')
+          ..write('resolution: $resolution, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, entityType, entityId, localValue, remoteValue, createdAt);
+  int get hashCode => Object.hash(
+    id,
+    entityType,
+    entityId,
+    localValue,
+    remoteValue,
+    resolution,
+    createdAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -9561,6 +9644,7 @@ class SyncConflict extends DataClass implements Insertable<SyncConflict> {
           other.entityId == this.entityId &&
           other.localValue == this.localValue &&
           other.remoteValue == this.remoteValue &&
+          other.resolution == this.resolution &&
           other.createdAt == this.createdAt);
 }
 
@@ -9570,6 +9654,7 @@ class SyncConflictsCompanion extends UpdateCompanion<SyncConflict> {
   final Value<String> entityId;
   final Value<String> localValue;
   final Value<String> remoteValue;
+  final Value<String?> resolution;
   final Value<DateTime> createdAt;
   final Value<int> rowid;
   const SyncConflictsCompanion({
@@ -9578,6 +9663,7 @@ class SyncConflictsCompanion extends UpdateCompanion<SyncConflict> {
     this.entityId = const Value.absent(),
     this.localValue = const Value.absent(),
     this.remoteValue = const Value.absent(),
+    this.resolution = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -9587,6 +9673,7 @@ class SyncConflictsCompanion extends UpdateCompanion<SyncConflict> {
     required String entityId,
     required String localValue,
     required String remoteValue,
+    this.resolution = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -9600,6 +9687,7 @@ class SyncConflictsCompanion extends UpdateCompanion<SyncConflict> {
     Expression<String>? entityId,
     Expression<String>? localValue,
     Expression<String>? remoteValue,
+    Expression<String>? resolution,
     Expression<DateTime>? createdAt,
     Expression<int>? rowid,
   }) {
@@ -9609,6 +9697,7 @@ class SyncConflictsCompanion extends UpdateCompanion<SyncConflict> {
       if (entityId != null) 'entity_id': entityId,
       if (localValue != null) 'local_value': localValue,
       if (remoteValue != null) 'remote_value': remoteValue,
+      if (resolution != null) 'resolution': resolution,
       if (createdAt != null) 'created_at': createdAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -9620,6 +9709,7 @@ class SyncConflictsCompanion extends UpdateCompanion<SyncConflict> {
     Value<String>? entityId,
     Value<String>? localValue,
     Value<String>? remoteValue,
+    Value<String?>? resolution,
     Value<DateTime>? createdAt,
     Value<int>? rowid,
   }) {
@@ -9629,6 +9719,7 @@ class SyncConflictsCompanion extends UpdateCompanion<SyncConflict> {
       entityId: entityId ?? this.entityId,
       localValue: localValue ?? this.localValue,
       remoteValue: remoteValue ?? this.remoteValue,
+      resolution: resolution ?? this.resolution,
       createdAt: createdAt ?? this.createdAt,
       rowid: rowid ?? this.rowid,
     );
@@ -9652,6 +9743,9 @@ class SyncConflictsCompanion extends UpdateCompanion<SyncConflict> {
     if (remoteValue.present) {
       map['remote_value'] = Variable<String>(remoteValue.value);
     }
+    if (resolution.present) {
+      map['resolution'] = Variable<String>(resolution.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -9669,6 +9763,7 @@ class SyncConflictsCompanion extends UpdateCompanion<SyncConflict> {
           ..write('entityId: $entityId, ')
           ..write('localValue: $localValue, ')
           ..write('remoteValue: $remoteValue, ')
+          ..write('resolution: $resolution, ')
           ..write('createdAt: $createdAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -17777,6 +17872,7 @@ typedef $$SyncConflictsTableCreateCompanionBuilder =
       required String entityId,
       required String localValue,
       required String remoteValue,
+      Value<String?> resolution,
       Value<DateTime> createdAt,
       Value<int> rowid,
     });
@@ -17787,6 +17883,7 @@ typedef $$SyncConflictsTableUpdateCompanionBuilder =
       Value<String> entityId,
       Value<String> localValue,
       Value<String> remoteValue,
+      Value<String?> resolution,
       Value<DateTime> createdAt,
       Value<int> rowid,
     });
@@ -17822,6 +17919,11 @@ class $$SyncConflictsTableFilterComposer
 
   ColumnFilters<String> get remoteValue => $composableBuilder(
     column: $table.remoteValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get resolution => $composableBuilder(
+    column: $table.resolution,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -17865,6 +17967,11 @@ class $$SyncConflictsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get resolution => $composableBuilder(
+    column: $table.resolution,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -17898,6 +18005,11 @@ class $$SyncConflictsTableAnnotationComposer
 
   GeneratedColumn<String> get remoteValue => $composableBuilder(
     column: $table.remoteValue,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get resolution => $composableBuilder(
+    column: $table.resolution,
     builder: (column) => column,
   );
 
@@ -17941,6 +18053,7 @@ class $$SyncConflictsTableTableManager
                 Value<String> entityId = const Value.absent(),
                 Value<String> localValue = const Value.absent(),
                 Value<String> remoteValue = const Value.absent(),
+                Value<String?> resolution = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SyncConflictsCompanion(
@@ -17949,6 +18062,7 @@ class $$SyncConflictsTableTableManager
                 entityId: entityId,
                 localValue: localValue,
                 remoteValue: remoteValue,
+                resolution: resolution,
                 createdAt: createdAt,
                 rowid: rowid,
               ),
@@ -17959,6 +18073,7 @@ class $$SyncConflictsTableTableManager
                 required String entityId,
                 required String localValue,
                 required String remoteValue,
+                Value<String?> resolution = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SyncConflictsCompanion.insert(
@@ -17967,6 +18082,7 @@ class $$SyncConflictsTableTableManager
                 entityId: entityId,
                 localValue: localValue,
                 remoteValue: remoteValue,
+                resolution: resolution,
                 createdAt: createdAt,
                 rowid: rowid,
               ),
@@ -18038,11 +18154,11 @@ class $AppDatabaseManager {
 
 
 
-// 7. Файл lib/data/database/transactions_dao.dart
+// ============================================
+// 8. ФАЙЛ: lib/data/database/transactions_dao.dart
+// ============================================
 
-
-
- import 'package:drift/drift.dart';
+import 'package:drift/drift.dart';
 import 'database.dart';
 
 part 'transactions_dao.g.dart';
@@ -18121,11 +18237,11 @@ class TransactionsDao extends DatabaseAccessor<AppDatabase>
 
 
 
-// 8. Файл lib/data/database/transactions_dao.g.dart
+// ============================================
+// 9. ФАЙЛ: lib/data/database/transactions_dao.g.dart
+// ============================================
 
-
-
- // GENERATED CODE - DO NOT MODIFY BY HAND
+// GENERATED CODE - DO NOT MODIFY BY HAND
 
 part of 'transactions_dao.dart';
 
@@ -18157,11 +18273,462 @@ class TransactionsDaoManager {
 
 
 
-// 9. Файл lib/data/repositories/sync_engine.dart
+// ============================================
+// 10. ФАЙЛ: lib/data/database/analytics_dao.dart
+// ============================================
+
+import 'package:drift/drift.dart';
+import 'database.dart';
+
+part 'analytics_dao.g.dart';
+
+/// DAO для аналитических SQL-запросов (Раздел 5 ТЗ)
+@DriftAccessor(tables: [
+  Transactions,
+  Accounts,
+  Categories,
+  AppSettings,
+  BudgetLimits,
+])
+class AnalyticsDao extends DatabaseAccessor<AppDatabase>
+    with _$AnalyticsDaoMixin {
+  AnalyticsDao(super.db);
+
+  // ============================================================
+  // 1. СУММА ТРАТ ПО КАТЕГОРИИ ЗА МЕСЯЦ (ТЗ п.5.1)
+  // Исключает audit_status = 'ignored'
+  // ============================================================
+
+  /// Получить сумму расходов по конкретной категории за месяц
+  Future<double> getCategoryExpenseSum({
+    required String categoryId,
+    required int year,
+    required int month,
+  }) async {
+    final query = customSelect(
+      '''
+      SELECT COALESCE(SUM(amount), 0.0) as total
+      FROM transactions
+      WHERE custom_category_id = ?
+        AND audit_status != 'ignored'
+        AND type = 'expense'
+        AND CAST(strftime('%Y', date) AS INTEGER) = ?
+        AND CAST(strftime('%m', date) AS INTEGER) = ?
+      ''',
+      variables: [
+        Variable<String>(categoryId),
+        Variable<int>(year),
+        Variable<int>(month),
+      ],
+      readsFrom: {transactions},
+    );
+
+    final row = await query.getSingle();
+    return row.read<double>('total');
+  }
+
+  /// Получить суммы по всем категориям за месяц (для графика)
+  Future<List<CategoryExpense>> getCategoryExpensesForMonth({
+    required int year,
+    required int month,
+  }) async {
+    final query = customSelect(
+      '''
+      SELECT 
+        t.custom_category_id,
+        c.name as category_name,
+        COALESCE(SUM(t.amount), 0.0) as total
+      FROM transactions t
+      LEFT JOIN categories c ON t.custom_category_id = c.id
+      WHERE t.audit_status != 'ignored'
+        AND t.type = 'expense'
+        AND CAST(strftime('%Y', t.date) AS INTEGER) = ?
+        AND CAST(strftime('%m', t.date) AS INTEGER) = ?
+      GROUP BY t.custom_category_id, c.name
+      ORDER BY total DESC
+      ''',
+      variables: [
+        Variable<int>(year),
+        Variable<int>(month),
+      ],
+      readsFrom: {transactions, categories},
+    );
+
+    final rows = await query.get();
+    return rows
+        .map((row) => CategoryExpense(
+              categoryId: row.read<String>('custom_category_id'),
+              categoryName: row.read<String>('category_name'),
+              total: row.read<double>('total'),
+            ))
+        .toList();
+  }
+
+  // ============================================================
+  // 2. ЧЕСТНОЕ СКОЛЬЗЯЩЕЕ СРЕДНЕЕ (ТЗ п.5.2)
+  // Деление на N_active (кол-во месяцев с тратами), а не на 12
+  // ============================================================
+
+  /// Получить количество месяцев с тратами за год (N_active)
+  Future<int> getActiveMonthsCount({
+    required int year,
+    String? categoryId,
+  }) async {
+    final categoryFilter = categoryId != null
+        ? 'AND custom_category_id = ?'
+        : '';
+    final variables = <Variable>[Variable<int>(year)];
+    if (categoryId != null) {
+      variables.add(Variable<String>(categoryId));
+    }
+
+    final query = customSelect(
+      '''
+      SELECT COUNT(DISTINCT CAST(strftime('%m', date) AS INTEGER)) as active_months
+      FROM transactions
+      WHERE type = 'expense'
+        AND audit_status != 'ignored'
+        AND CAST(strftime('%Y', date) AS INTEGER) = ?
+        $categoryFilter
+      ''',
+      variables: variables,
+      readsFrom: {transactions},
+    );
+
+    final row = await query.getSingle();
+    return row.read<int>('active_months');
+  }
+
+  /// Рассчитать честное среднее расходов по категории за год
+  Future<double> getHonestAverageExpense({
+    required String categoryId,
+    required int year,
+  }) async {
+    final totalQuery = customSelect(
+      '''
+      SELECT COALESCE(SUM(amount), 0.0) as total
+      FROM transactions
+      WHERE custom_category_id = ?
+        AND type = 'expense'
+        AND audit_status != 'ignored'
+        AND CAST(strftime('%Y', date) AS INTEGER) = ?
+      ''',
+      variables: [
+        Variable<String>(categoryId),
+        Variable<int>(year),
+      ],
+      readsFrom: {transactions},
+    );
+
+    final totalRow = await totalQuery.getSingle();
+    final total = totalRow.read<double>('total');
+
+    final activeMonths = await getActiveMonthsCount(
+      year: year,
+      categoryId: categoryId,
+    );
+
+    if (activeMonths == 0) return 0.0;
+    return total / activeMonths;
+  }
+
+  // ============================================================
+  // 3. ПОДУШКА БЕЗОПАСНОСТИ (ТЗ п.5.2)
+  // Накопления / Среднее расходов за 3 месяца
+  // ============================================================
+
+  /// Рассчитать подушку безопасности (в месяцах)
+  Future<double> getSafetyCushion({
+    required String userId,
+  }) async {
+    // 1. Получить общий баланс (сумма всех счетов с include_in_personal_balance = TRUE)
+    final balanceQuery = customSelect(
+      '''
+      SELECT COALESCE(SUM(current_balance), 0.0) as total_balance
+      FROM accounts
+      WHERE user_id = ?
+        AND include_in_personal_balance = TRUE
+        AND account_type != 'investment_broker'
+      ''',
+      variables: [Variable<String>(userId)],
+      readsFrom: {accounts},
+    );
+
+    final balanceRow = await balanceQuery.getSingle();
+    final totalBalance = balanceRow.read<double>('total_balance');
+
+    // 2. Получить средние расходы за последние 3 месяца
+    final avgExpensesQuery = customSelect(
+      '''
+      SELECT COALESCE(SUM(amount), 0.0) / 3.0 as avg_expenses
+      FROM transactions
+      WHERE type = 'expense'
+        AND audit_status != 'ignored'
+        AND date >= date('now', '-3 months')
+      ''',
+      readsFrom: {transactions},
+    );
+
+    final avgRow = await avgExpensesQuery.getSingle();
+    final avgExpenses = avgRow.read<double>('avg_expenses');
+
+    if (avgExpenses == 0) return 0.0;
+    return totalBalance / avgExpenses;
+  }
+
+  // ============================================================
+  // 4. ПЛАВАЮЩИЕ ЛИМИТЫ (ТЗ п.5.3)
+  // Логика через свитчи inherit_limit_from_previous_month
+  // и carry_over_unused_limit
+  // ============================================================
+
+  /// Рассчитать эффективный лимит с учётом свитчей
+  Future<double> getEffectiveLimit({
+    required String categoryId,
+    required int year,
+    required int month,
+  }) async {
+    // 1. Получить настройки пользователя
+    final settingsQuery = customSelect(
+      '''
+      SELECT inherit_limit_from_previous_month, carry_over_unused_limit
+      FROM app_settings
+      LIMIT 1
+      ''',
+      readsFrom: {appSettings},
+    );
+
+    final settingsRow = await settingsQuery.getSingleOrNull();
+    if (settingsRow == null) {
+      // Если настроек нет, вернуть базовый лимит
+      return await _getBaseLimit(categoryId, year, month);
+    }
+
+    final inheritLimit = settingsRow.read<bool>('inherit_limit_from_previous_month');
+    final carryOver = settingsRow.read<bool>('carry_over_unused_limit');
+
+    // 2. Получить базовый лимит на текущий месяц
+    double effectiveLimit = await _getBaseLimit(categoryId, year, month);
+
+    // 3. Применить логику наследования от прошлого месяца
+    if (inheritLimit) {
+      final previousMonth = month == 1 ? 12 : month - 1;
+      final previousYear = month == 1 ? year - 1 : year;
+
+      final previousLimit = await _getBaseLimit(
+        categoryId,
+        previousYear,
+        previousMonth,
+      );
+
+      if (previousLimit > 0) {
+        effectiveLimit = previousLimit;
+      }
+    }
+
+    // 4. Применить логику переноса остатка
+    if (carryOver) {
+      final previousMonth = month == 1 ? 12 : month - 1;
+      final previousYear = month == 1 ? year - 1 : year;
+
+      final previousLimit = await _getBaseLimit(
+        categoryId,
+        previousYear,
+        previousMonth,
+      );
+
+      final previousExpenses = await getCategoryExpenseSum(
+        categoryId: categoryId,
+        year: previousYear,
+        month: previousMonth,
+      );
+
+      final unusedLimit = previousLimit - previousExpenses;
+      if (unusedLimit > 0) {
+        effectiveLimit += unusedLimit;
+      }
+    }
+
+    return effectiveLimit;
+  }
+
+  /// Получить базовый лимит из таблицы budget_limits
+  Future<double> _getBaseLimit(
+    String categoryId,
+    int year,
+    int month,
+  ) async {
+    final query = customSelect(
+      '''
+      SELECT COALESCE(limit_amount, 0.0) as limit_amount
+      FROM budget_limits
+      WHERE category_id = ?
+        AND year = ?
+        AND month = ?
+      ''',
+      variables: [
+        Variable<String>(categoryId),
+        Variable<int>(year),
+        Variable<int>(month),
+      ],
+      readsFrom: {budgetLimits},
+    );
+
+    final row = await query.getSingleOrNull();
+    return row?.read<double>('limit_amount') ?? 0.0;
+  }
+
+  // ============================================================
+  // 5. КОНСТРУКТОР ОБЩЕГО БАЛАНСА (ТЗ п.3.3)
+  // Суммирует балансы только тех счетов, где
+  // include_in_personal_balance = TRUE или include_in_family_balance = TRUE
+  // ============================================================
+
+  /// Получить личный баланс (include_in_personal_balance = TRUE)
+  Future<double> getPersonalBalance({required String userId}) async {
+    final query = customSelect(
+      '''
+      SELECT COALESCE(SUM(current_balance), 0.0) as total
+      FROM accounts
+      WHERE user_id = ?
+        AND include_in_personal_balance = TRUE
+      ''',
+      variables: [Variable<String>(userId)],
+      readsFrom: {accounts},
+    );
+
+    final row = await query.getSingle();
+    return row.read<double>('total');
+  }
+
+  /// Получить семейный баланс (include_in_family_balance = TRUE)
+  Future<double> getFamilyBalance({required String userId}) async {
+    final query = customSelect(
+      '''
+      SELECT COALESCE(SUM(a.current_balance), 0.0) as total
+      FROM accounts a
+      INNER JOIN users u ON a.user_id = u.id
+      WHERE u.space_id = (
+        SELECT space_id FROM users WHERE id = ?
+      )
+        AND a.include_in_family_balance = TRUE
+      ''',
+      variables: [Variable<String>(userId)],
+      readsFrom: {accounts, users},
+    );
+
+    final row = await query.getSingle();
+    return row.read<double>('total');
+  }
+
+  /// Получить детализацию по счетам для личного баланса
+  Future<List<AccountBalance>> getPersonalBalanceDetails({
+    required String userId,
+  }) async {
+    final query = customSelect(
+      '''
+      SELECT 
+        id,
+        bank_name,
+        custom_name,
+        card_number_mask,
+        current_balance,
+        currency
+      FROM accounts
+      WHERE user_id = ?
+        AND include_in_personal_balance = TRUE
+      ORDER BY current_balance DESC
+      ''',
+      variables: [Variable<String>(userId)],
+      readsFrom: {accounts},
+    );
+
+    final rows = await query.get();
+    return rows
+        .map((row) => AccountBalance(
+              accountId: row.read<String>('id'),
+              bankName: row.read<String>('bank_name'),
+              customName: row.read<String>('custom_name'),
+              cardMask: row.read<String>('card_number_mask'),
+              balance: row.read<double>('current_balance'),
+              currency: row.read<String>('currency'),
+            ))
+        .toList();
+  }
+
+  /// Получить Savings Rate (ТЗ п.5.2)
+  /// (Доходы - Расходы) / Доходы * 100%
+  Future<double> getSavingsRate({
+    required int year,
+    required int month,
+  }) async {
+    final query = customSelect(
+      '''
+      SELECT 
+        COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0.0 END), 0.0) as total_income,
+        COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0.0 END), 0.0) as total_expense
+      FROM transactions
+      WHERE audit_status != 'ignored'
+        AND CAST(strftime('%Y', date) AS INTEGER) = ?
+        AND CAST(strftime('%m', date) AS INTEGER) = ?
+      ''',
+      variables: [
+        Variable<int>(year),
+        Variable<int>(month),
+      ],
+      readsFrom: {transactions},
+    );
+
+    final row = await query.getSingle();
+    final income = row.read<double>('total_income');
+    final expense = row.read<double>('total_expense');
+
+    if (income == 0) return 0.0;
+    return ((income - expense) / income) * 100.0;
+  }
+}
+
+// ============================================================
+// DTO-модели для результатов
+// ============================================================
+
+class CategoryExpense {
+  final String categoryId;
+  final String categoryName;
+  final double total;
+
+  CategoryExpense({
+    required this.categoryId,
+    required this.categoryName,
+    required this.total,
+  });
+}
+
+class AccountBalance {
+  final String accountId;
+  final String bankName;
+  final String customName;
+  final String cardMask;
+  final double balance;
+  final String currency;
+
+  AccountBalance({
+    required this.accountId,
+    required this.bankName,
+    required this.customName,
+    required this.cardMask,
+    required this.balance,
+    required this.currency,
+  });
+}
 
 
 
- import 'dart:convert';
+// ============================================
+// 11. ФАЙЛ: lib/data/repositories/sync_engine.dart
+// ============================================
+
+import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../database/database.dart';
@@ -18385,11 +18952,11 @@ class SyncResult {
 
 
 
-// 10. Файл lib/core/backgrounds/background_sync.dart
+// ============================================
+// 12. ФАЙЛ: lib/core/backgrounds/background_sync.dart
+// ============================================
 
-
-
- import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 import 'package:workmanager/workmanager.dart';
 import '../../data/database/database.dart';
 import '../../data/datasources/supabase_client.dart';
@@ -18466,11 +19033,11 @@ Future<void> cancelBackgroundSync() async {
 
 
 
-// 11. Файл lib/data/datasources/supabase_client.dart
+// ============================================
+// 13. ФАЙЛ: lib/data/datasources/supabase_client.dart
+// ============================================
 
-
-
- import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Singleton клиент для работы с Supabase
 class SupabaseClientService {
@@ -18521,11 +19088,226 @@ class SupabaseClientService {
 
 
 
-// 12. Файл lib/features/transactions/presentation/models/transaction_ui_model.dart
+// ============================================
+// 14. ФАЙЛ: lib/data/repositories/analytics_repository.dart
+// ============================================
+
+import '../database/database.dart';
+import '../database/analytics_dao.dart';
+
+/// Repository для аналитических данных
+class AnalyticsRepository {
+  final AnalyticsDao _dao;
+
+  AnalyticsRepository({required AppDatabase database})
+    : _dao = AnalyticsDao(database);
+
+  // 1. Сумма трат по категории
+  Future<double> getCategoryExpenseSum({
+    required String categoryId,
+    required int year,
+    required int month,
+  }) => _dao.getCategoryExpenseSum(
+    categoryId: categoryId,
+    year: year,
+    month: month,
+  );
+
+  // 2. Честное среднее
+  Future<double> getHonestAverageExpense({
+    required String categoryId,
+    required int year,
+  }) => _dao.getHonestAverageExpense(categoryId: categoryId, year: year);
+
+  // 3. Подушка безопасности
+  Future<double> getSafetyCushion({required String userId}) =>
+      _dao.getSafetyCushion(userId: userId);
+
+  // 4. Эффективный лимит
+  Future<double> getEffectiveLimit({
+    required String categoryId,
+    required int year,
+    required int month,
+  }) =>
+      _dao.getEffectiveLimit(categoryId: categoryId, year: year, month: month);
+
+  // 5. Балансы
+  Future<double> getPersonalBalance({required String userId}) =>
+      _dao.getPersonalBalance(userId: userId);
+
+  Future<double> getFamilyBalance({required String userId}) =>
+      _dao.getFamilyBalance(userId: userId);
+
+  Future<List<AccountBalance>> getPersonalBalanceDetails({
+    required String userId,
+  }) => _dao.getPersonalBalanceDetails(userId: userId);
+
+  // Savings Rate
+  Future<double> getSavingsRate({required int year, required int month}) =>
+      _dao.getSavingsRate(year: year, month: month);
+}
 
 
 
- import 'package:flutter/material.dart';
+// ============================================
+// 15. ФАЙЛ: lib/core/providers/analytics_providers.dart
+// ============================================
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../data/database/database.dart';
+import '../../data/repositories/analytics_repository.dart';
+import '../../data/database/analytics_dao.dart';
+
+// ============================================================
+// Repository Provider
+// ============================================================
+
+final analyticsRepositoryProvider = Provider<AnalyticsRepository>((ref) {
+  final database = ref.watch(databaseProvider);
+  return AnalyticsRepository(database: database);
+});
+
+// Заглушка для databaseProvider (замените на реальный)
+final databaseProvider = Provider<AppDatabase>((ref) {
+  return AppDatabase();
+});
+
+// ============================================================
+// 1. Сумма трат по категории за месяц
+// ============================================================
+
+class CategoryExpenseParams {
+  final String categoryId;
+  final int year;
+  final int month;
+
+  CategoryExpenseParams({
+    required this.categoryId,
+    required this.year,
+    required this.month,
+  });
+}
+
+final categoryExpenseProvider =
+    FutureProvider.family<double, CategoryExpenseParams>((ref, params) async {
+      final repository = ref.watch(analyticsRepositoryProvider);
+      return repository.getCategoryExpenseSum(
+        categoryId: params.categoryId,
+        year: params.year,
+        month: params.month,
+      );
+    });
+
+// ============================================================
+// 2. Честное скользящее среднее
+// ============================================================
+
+class HonestAverageParams {
+  final String categoryId;
+  final int year;
+
+  HonestAverageParams({required this.categoryId, required this.year});
+}
+
+final honestAverageExpenseProvider =
+    FutureProvider.family<double, HonestAverageParams>((ref, params) async {
+      final repository = ref.watch(analyticsRepositoryProvider);
+      return repository.getHonestAverageExpense(
+        categoryId: params.categoryId,
+        year: params.year,
+      );
+    });
+
+// ============================================================
+// 3. Подушка безопасности
+// ============================================================
+
+final safetyCushionProvider = FutureProvider.family<double, String>((
+  ref,
+  userId,
+) async {
+  final repository = ref.watch(analyticsRepositoryProvider);
+  return repository.getSafetyCushion(userId: userId);
+});
+
+// ============================================================
+// 4. Эффективный лимит (плавающие лимиты)
+// ============================================================
+
+class EffectiveLimitParams {
+  final String categoryId;
+  final int year;
+  final int month;
+
+  EffectiveLimitParams({
+    required this.categoryId,
+    required this.year,
+    required this.month,
+  });
+}
+
+final effectiveLimitProvider =
+    FutureProvider.family<double, EffectiveLimitParams>((ref, params) async {
+      final repository = ref.watch(analyticsRepositoryProvider);
+      return repository.getEffectiveLimit(
+        categoryId: params.categoryId,
+        year: params.year,
+        month: params.month,
+      );
+    });
+
+// ============================================================
+// 5. Конструктор общего баланса
+// ============================================================
+
+final personalBalanceProvider = FutureProvider.family<double, String>((
+  ref,
+  userId,
+) async {
+  final repository = ref.watch(analyticsRepositoryProvider);
+  return repository.getPersonalBalance(userId: userId);
+});
+
+final familyBalanceProvider = FutureProvider.family<double, String>((
+  ref,
+  userId,
+) async {
+  final repository = ref.watch(analyticsRepositoryProvider);
+  return repository.getFamilyBalance(userId: userId);
+});
+
+final personalBalanceDetailsProvider =
+    FutureProvider.family<List<AccountBalance>, String>((ref, userId) async {
+      final repository = ref.watch(analyticsRepositoryProvider);
+      return repository.getPersonalBalanceDetails(userId: userId);
+    });
+
+// ============================================================
+// Savings Rate
+// ============================================================
+
+class SavingsRateParams {
+  final int year;
+  final int month;
+
+  SavingsRateParams({required this.year, required this.month});
+}
+
+final savingsRateProvider = FutureProvider.family<double, SavingsRateParams>((
+  ref,
+  params,
+) async {
+  final repository = ref.watch(analyticsRepositoryProvider);
+  return repository.getSavingsRate(year: params.year, month: params.month);
+});
+
+
+
+// ============================================
+// 16. ФАЙЛ: lib/features/transactions/presentation/models/transaction_ui_model.dart
+// ============================================
+
+import 'package:flutter/material.dart';
 
 /// Плоская DTO-модель для отображения транзакции в UI.
 /// Данные сюда должны приходить из UseCase/Repository после JOIN таблиц.
@@ -18573,11 +19355,11 @@ class TransactionUiModel {
 
 
 
-// 13. Файл lib/features/transactions/presentation/screens/transactions_screen.dart
+// ============================================
+// 17. ФАЙЛ: lib/features/transactions/presentation/screens/transactions_screen.dart
+// ============================================
 
-
-
- import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/transaction_ui_model.dart';
 import '../widgets/transaction_card.dart';
@@ -18705,11 +19487,11 @@ class MockData {
 
 
 
-// 14. Файл lib/features/transactions/presentation/widgets/transaction_card.dart
+// ============================================
+// 18. ФАЙЛ: lib/features/transactions/presentation/widgets/transaction_card.dart
+// ============================================
 
-
-
- import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../models/transaction_ui_model.dart';
 import 'transaction_actions_sheet.dart';
 
@@ -18853,11 +19635,11 @@ class TransactionCard extends StatelessWidget {
 
 
 
-// 15. Файл lib/features/transactions/presentation/widgets/transaction_actions_sheet.dart
+// ============================================
+// 19. ФАЙЛ: lib/features/transactions/presentation/widgets/transaction_actions_sheet.dart
+// ============================================
 
-
-
- import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../models/transaction_ui_model.dart';
 
 class TransactionActionsSheet extends StatelessWidget {
@@ -18953,3 +19735,48 @@ class TransactionActionsSheet extends StatelessWidget {
     );
   }
 }
+
+// ============================================
+// ИНФОРМАЦИЯ О РЕАЛИЗАЦИИ
+// ============================================
+// 
+// РЕАЛИЗОВАННЫЙ ФУНКЦИОНАЛ:
+// 
+// 1. Экран "Лог операций" (Раздел 14.1 ТЗ):
+//    - Вертикальная лента транзакций (ListView.builder)
+//    - Карточка с иконкой, счётом, маской карты
+//    - Цветовая индикация (доходы - зелёный, расходы - красный)
+//    - Long-press меню (Bottom Sheet):
+//      * Засекретить (Подарок)
+//      * Исключить из учёта (Сторно)
+//      * Пометить как возврат
+//      * Изменить категорию
+//    - Material Design 3
+//
+// 2. SQL-запросы для аналитики (Раздел 5 ТЗ):
+//    - Сумма трат по категории (исключая audit_status = 'ignored')
+//    - Честное среднее (деление на N_active, а не на 12)
+//    - Подушка безопасности (накопления / среднее за 3 мес)
+//    - Плавающие лимиты (inherit_limit_from_previous_month, carry_over_unused_limit)
+//    - Конструктор общего баланса (include_in_personal/family_balance)
+//    - Savings Rate
+//
+// 3. Архитектура:
+//    - DAO-слой (Drift customSelect)
+//    - Repository-слой (абстракция)
+//    - Riverpod-провайдеры (реактивность)
+//    - DTO-модели (TransactionUiModel, CategoryExpense, AccountBalance)
+//
+// СЛЕДУЮЩИЕ ШАГИ:
+// - Подключить UI к реальным данным из Drift
+// - Реализовать действия long-press меню (обновление БД)
+// - Добавить фильтр/поиск на экран транзакций
+// - Реализовать экран дашборда
+//
+// ЗАВИСИМОСТИ:
+// - drift: ^2.34.0 (SQLite ORM)
+// - flutter_riverpod: ^3.3.2 (State Management)
+// - go_router: ^17.3.0 (Routing)
+// - supabase_flutter: ^2.15.0 (Backend)
+// - workmanager: ^0.9.0+3 (Background sync)
+// ============================================
