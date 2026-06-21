@@ -13,7 +13,8 @@
             <application
         android:label="family_financial_assistant"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:enableOnBackInvokedCallback="true">
         <!-- Workmanager receiver -->
         <receiver
             android:name="androidx.work.impl.background.systemalarm.SystemAlarmReceiver"

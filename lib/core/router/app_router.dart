@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:family_financial_assistant/features/transactions/presentation/screens/transactions_screen.dart';
 
 // ==========================================
 // ЗАГЛУШКИ ЭКРАНОВ
@@ -18,13 +19,6 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       const Scaffold(body: Center(child: Text('Главная / Дашборд')));
-}
-
-class TransactionsScreen extends StatelessWidget {
-  const TransactionsScreen({super.key});
-  @override
-  Widget build(BuildContext context) =>
-      const Scaffold(body: Center(child: Text('Лог Операций')));
 }
 
 class CashbackScreen extends StatelessWidget {
@@ -60,11 +54,8 @@ class NotificationsScreen extends StatelessWidget {
 // ==========================================
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  // ❌ ВРЕМЕННО УБРАЛИ: следим за состоянием авторизации
-  // final isLoggedIn = ref.watch(isLoggedInProvider);
-
   return GoRouter(
-    initialLocation: '/dashboard',
+    initialLocation: '/transactions', // 👈 Изменил на /transactions для теста
     debugLogDiagnostics: true,
     routes: [
       GoRoute(path: '/auth', builder: (context, state) => const AuthScreen()),
@@ -74,7 +65,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/transactions',
-        builder: (context, state) => const TransactionsScreen(),
+        builder: (context, state) =>
+            const TransactionsScreen(),
       ),
       GoRoute(
         path: '/cashback',
@@ -93,19 +85,5 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const NotificationsScreen(),
       ),
     ],
-    // ❌ ВРЕМЕННО ЗАКОММЕНТИРОВАНО для теста
-    // redirect: (context, state) {
-    //   final isAuthRoute = state.matchedLocation == '/auth';
-    //
-    //   if (!isLoggedIn && !isAuthRoute) {
-    //     return '/auth';
-    //   }
-    //
-    //   if (isLoggedIn && isAuthRoute) {
-    //     return '/dashboard';
-    //   }
-    //
-    //   return null;
-    // },
   );
 });
